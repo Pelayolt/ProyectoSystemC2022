@@ -92,7 +92,7 @@ void dataMem::registro() {
 
                 // DEBUG			printf("[%06x] <- %08x   @ %.0lf \n", address.to_int(), dataWrite.to_int(), sc_time_stamp().to_double() / 1000.0);
                 MEM->writeWord(address, dataWrite);
-                if (PRINT_LS) cout << ";STORE;0x" << std::hex << std::setw(8) << std::setfill('0') << address << ";R" << std::dec << INST.rd.to_int() << ";0x" << std::hex << std::setw(8) << std::setfill('0') << SW << endl;
+                if (PRINT_LS) cout << ";STORE;0x" << std::hex << std::setw(8) << std::setfill('0') << address << ";R" << std::dec << INST.rd.to_int() << ";0x" << std::hex << std::setw(8) << std::setfill('0') << dataWrite << endl;
 
                 break;
             case 15:
