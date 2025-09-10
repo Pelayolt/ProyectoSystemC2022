@@ -1,4 +1,4 @@
-#ifndef CACHEL2_H
+/* #ifndef CACHEL2_H
 #define CACHEL2_H
 
 #include "mem.h"
@@ -72,3 +72,4 @@ private:
     unsigned w_offset;
 };
 #endif
+*/

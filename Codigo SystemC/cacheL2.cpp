@@ -1,3 +1,4 @@
+/*
 #include "cacheL2.h"
 #include <algorithm>
 #include <iomanip>
@@ -274,3 +275,4 @@ void cacheL2::updateLRU(L2CacheSet &set, L2CacheLine &accessedLine) {
         accessedLine.lru_counter = current_lru++;
     }
 }
+*/

@@ -1,71 +1,56 @@
 #ifndef FETCH_H
 #define FETCH_H
 
-#include "cacheL2.h"
-#include "systemc.h"
+#include "mem.h"
 #include "structsRV.h"
-#include <deque>
-#include <vector>
+#include "systemc.h"
 
-#define NUMLINES_L1_I 16
-#define WORDSPERLINE_L1_I 4
-#define ASSOCIATIVITY_L1_I 1// 1 = directa, 2 = 2 vías
-#define USEFIFO_L1_I false  // si no, usa LRU
 
 SC_MODULE(fetch) {
 public:
     sc_in<bool> clk, rst;
+
     sc_in<sc_uint<32>> PCext;
     sc_in<bool> hazard, bubble;
+
     sc_out<instruction> instOut;
     sc_out<sc_uint<32>> PCout;
-   
-    sc_in<bool> ready_cacheL2;
-    sc_in<L2CacheLine> line_in;
-    sc_out<sc_uint<32>> addr_cacheL2;
-    sc_out<bool> req_cacheL2;
 
-    cacheL2 *instCacheL2;
+    mem *MEM;// público, muy poco elegante
 
     void registro();
     void updatePC();
     void initPC(int initVal) { PC = initVal; }
-    virtual void end_of_simulation();
+
+    SC_CTOR(fetch) {
+        cout << "fetch: " << name() << endl;
+
+        INST.address = 0xffffffff;
+        INST.I = 0x13;
+        INST.aluOp = 0;
+        INST.memOp = 15;
+        INST.rs1 = INST.rs2 = INST.rd = 0x1f;//
+        INST.wReg = false;
+        INST.opA = INST.opB = INST.val2 = INST.aluOut = INST.dataOut = 0x0000dead;
+        strcpy(INST.desc, "???");
 
 
-    SC_CTOR(fetch);
+        SC_METHOD(updatePC);
+        sensitive << hazard << bubble << PCext << fire;
+
+        SC_METHOD(registro);
+        sensitive << clk.pos();
+    }
 
     unsigned int numInst;
-    unsigned cache_hits = 0;
-    unsigned cache_misses = 0;
 
 private:
     sc_uint<32> PC, newPC;
     sc_signal<bool> fire;
     instruction INST;
+
     double tiempo;
-
-    enum FetchState { IDLE,
-                      WAIT_L2 };
-
-    struct CacheSet {
-        std::deque<instCacheLine> ways;
-    };
-
-    std::vector<CacheSet> cache;
-    unsigned int current_lru = 0;
-    FetchState state = IDLE;
-
-    L2CacheLine l2_line_buf;
-    sc_uint<32> addr_buf;
-    bool reqToL2 = false;
-
-    void initCache();
-    sc_uint<32> fetchFromCache(sc_uint<32> addr, bool &isHit);
-    void startL2Request(sc_uint<32> addr);
-    bool isL2RequestComplete();
-    void storeLineToL1();
-    sc_int<32> getWord(const L2CacheLine &line, int idx);
 };
+
 
 #endif

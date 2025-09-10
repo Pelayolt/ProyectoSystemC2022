@@ -1,38 +1,38 @@
 #ifndef ALU_H
 #define ALU_H
 
-#include "systemc.h"
 #include "structsRV.h"
+#include "systemc.h"
 
 
-SC_MODULE (alu) {
+SC_MODULE(alu) {
 public:
+    sc_in<bool> clk, rst;
 
-sc_in<bool> clk, rst;
+    sc_in<instruction> I;
+    sc_out<instruction> instOut;
 
-sc_in< instruction >	I; 
-sc_out < instruction >	instOut;
+    void registro();
 
-  void registro();
+    SC_CTOR(alu) {
+        cout << "alu: " << name() << endl;
 
-  SC_CTOR(alu) {
-	cout<<"alu: "<<name()<<endl;
+        INST.address = 0xffffffff;
+        INST.I = 0x13;
+        INST.aluOp = 0;
+        INST.memOp = 15;
+        INST.rs1 = INST.rs2 = INST.rd = 0x1f;//
+        INST.wReg = false;
+        INST.opA = INST.opB = INST.val2 = INST.aluOut = INST.dataOut = 0x0000dead;
+        strcpy(INST.desc, "???");
 
-	INST.address = 0xffffffff;	INST.I = 0x13;	INST.aluOp = 0; INST.memOp = 15;
-	INST.rs1 = INST.rs2 = INST.rd = 0x1f; // 
-	INST.wReg = false; 
-	INST.opA = INST.opB = INST.val2 = INST.aluOut = INST.dataOut = 0x0000dead;
-	strcpy(INST.desc, "???");
+        SC_METHOD(registro);
+        sensitive << clk.pos();
+    }
 
-	SC_METHOD(registro);
-	sensitive << clk.pos(); 
-
-  }
 private:
-
-	instruction INST;
-
-}; 
+    instruction INST;
+};
 
 
 #define ADD 0
