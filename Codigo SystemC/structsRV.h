@@ -4,6 +4,8 @@
 #include "systemc.h"
 #include <string>
 
+#define PRINT_LS true
+
 using namespace std;
 
 
