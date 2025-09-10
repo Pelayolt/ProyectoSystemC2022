@@ -110,7 +110,6 @@ void cacheL2::cacheL2_process() {
                 if (PRINT && client_pending == FETCH) cout << "Acierto en cache, esperando instruccion a cache (" << LATENCY_CYCLES_L2 << " clk);";
                 else if (PRINT && client_pending == DATAMEM_R) cout << "Acierto en cache, esperando dato a cache (" << LATENCY_CYCLES_L2 << " clk);";
             }
-            //latency_counter = 1;
 
             pending_response = true;
         } else if (client_pending == DATAMEM_W) {
@@ -162,7 +161,7 @@ void cacheL2::cacheL2_process() {
             pending_response = true;
 
         } else if (PRINT)
-            cout << "_";
+            cout << ";";
     }
 
     notifying_to_dataMem = false;

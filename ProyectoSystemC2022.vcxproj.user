@@ -3,7 +3,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LocalDebuggerEnvironment>SC_SIGNAL_WRITE_CHECK=DISABLE</LocalDebuggerEnvironment>
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
-    <LocalDebuggerCommandArguments>C:\Users\pelay\UDC\TFG\Codigos_Segger\multiply\Output\Debug\Exe\multiply.elf &gt; ..\Excels\Output.csv</LocalDebuggerCommandArguments>
+    <LocalDebuggerCommandArguments>C:\Users\pelay\UDC\TFG\Codigos_Segger\multiply\Output\Debug\Exe\multiply.elf &gt; ..\Excels\Output.txt</LocalDebuggerCommandArguments>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LocalDebuggerEnvironment>SC_SIGNAL_WRITE_CHECK=DISABLE

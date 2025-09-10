@@ -101,9 +101,9 @@ private:
 
     void initCache();
     void updatePendingMask();
-    bool accessCache(sc_uint<32> addr, sc_int<32> & word, bool isWrite, sc_int<32> writeData);
+    bool accessCache(sc_int<32> addr, sc_int<32> & word, bool isWrite, sc_int<32> writeData);
     void storeLineToL1(sc_uint<32> addr, const L2CacheLine &line);
-    void startL2Request(sc_uint<32> addr, bool isWrite, sc_int<32> writeData);
+    void startL2Request(sc_int<32> addr, bool isWrite, sc_int<32> writeData);
     bool isL2RequestCompleteR();
     bool isL2RequestCompleteW();
     void addNewInst(instruction i);

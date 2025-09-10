@@ -30,7 +30,7 @@ void dataMem::updatePendingMask() {
 }
 
 
-bool dataMem::accessCache(sc_uint<32> addr, sc_int<32> &word, bool isWrite, sc_int<32> writeData) {
+bool dataMem::accessCache(sc_int<32> addr, sc_int<32> &word, bool isWrite, sc_int<32> writeData) {
     sc_uint<32> index = (addr >> 2) / WORDSPERLINE_L1_D % NUMLINES_L1_D;
     sc_uint<32> tag = addr >> (2 + int(log2(WORDSPERLINE_L1_D)) + int(log2(NUMLINES_L1_D)));
     sc_uint<32> offset = (addr >> 2) % WORDSPERLINE_L1_D;
@@ -101,13 +101,13 @@ void dataMem::storeLineToL1(sc_uint<32> addr, const L2CacheLine &lineL2) {
     set.ways.push_back(newline);
 }
 
-void dataMem::startL2Request(sc_uint<32> addr, bool isWrite, sc_int<32> writeData) {
+void dataMem::startL2Request(sc_int<32> addr, bool isWrite, sc_int<32> writeData) {
     if (!isWrite) {
         addr_buf = addr;
         addr_cacheL2.write(addr & ~(WORDSPERLINE_L2 * 4 - 1));
         read_req_cacheL2.write(true);
     } else {
-        addr_cacheL2.write(addr);
+        addr_cacheL2.write((sc_uint<32>) addr);
         data_cacheL2.write(writeData);
         write_req_cacheL2.write(true);
     }
@@ -174,7 +174,7 @@ void dataMem::registro() {
     }
 
 
-    sc_uint<32> address = (sc_uint<32>) INST.aluOut;
+    sc_int<32> address = INST.aluOut;
     int BH = address & 3;
     sc_int<32> dataWrite = INST.val2;
     sc_uint<4> opCode = INST.memOp;
@@ -183,7 +183,7 @@ void dataMem::registro() {
     if (INST.address > 0x60c4)
         cout << "";
 
-    if (tiempo >= 375712)
+    if (tiempo >= 189396)
         cout << "";
 
 
@@ -232,7 +232,7 @@ void dataMem::registro() {
             INST.dataOut = decodeReadData(opCode, word, BH);
             instOut.write(INST);
             if (PRINT) cout << "Palabra " << "0x" << std::hex << std::setw(8) << std::setfill('0') << word << " encontrada en cache";
-            if (PRINT_LS) cout << ";LOAD;0x" << std::hex << std::setw(8) << std::setfill('0') << address << ";R" << std::dec << INST.rd.to_int() << ";0x" << std::hex << std::setw(8) << std::setfill('0') << INST.dataOut.to_int() << endl;
+            if (PRINT_LS) cout << ";" << tiempo << ";LOAD;0x" << std::hex << std::setw(8) << std::setfill('0') << address << ";R" << std::dec << INST.rd.to_int() << ";0x" << std::hex << std::setw(8) << std::setfill('0') << INST.dataOut.to_int() << endl;
             break;
 
         // ----- Escrituras -----
@@ -241,8 +241,8 @@ void dataMem::registro() {
             ((sc_uint<32> &) word).range(8 * BH + 7, 8 * BH) = ((sc_uint<32>) dataWrite).range(7, 0);
             accessCache(address, word, true, word);
             instOut.write(INST);
-            if (PRINT) cout << "Palabra " << "0x" << std::hex << std::setw(8) << std::setfill('0') << word << " escrita en cache";
-            if (PRINT_LS) cout << ";STORE;0x" << std::hex << std::setw(8) << std::setfill('0') << address << ";R" << std::dec << INST.rd.to_int() << ";0x" << std::hex << std::setw(8) << std::setfill('0') << word << endl;
+            if (PRINT) cout << "Palabra " << "0x" << std::hex << std::setw(8) << std::setfill('0') << dataWrite << " escrita en cache";
+            if (PRINT_LS) cout << ";" << tiempo << ";STORE;0x" << std::hex << std::setw(8) << std::setfill('0') << address << ";R" << std::dec << INST.rd.to_int() << ";0x" << std::hex << std::setw(8) << std::setfill('0') << dataWrite << endl;
             break;
 
         case 9:// SH
@@ -251,16 +251,16 @@ void dataMem::registro() {
             ((sc_uint<32> &) word).range(8 * BH + 15, 8 * BH) = ((sc_uint<32>) dataWrite).range(15, 0);
             accessCache(address, word, true, word);
             instOut.write(INST);
-            if (PRINT) cout << "Palabra " << "0x" << std::hex << std::setw(8) << std::setfill('0') << word << " escrita en cache";            
-            if (PRINT_LS) cout << ";STORE;0x" << std::hex << std::setw(8) << std::setfill('0') << address << ";R" << std::dec << INST.rd.to_int() << ";0x" << std::hex << std::setw(8) << std::setfill('0') << word << endl;
+            if (PRINT) cout << "Palabra " << "0x" << std::hex << std::setw(8) << std::setfill('0') << dataWrite << " escrita en cache";            
+            if (PRINT_LS) cout << ";" << tiempo << ";STORE;0x" << std::hex << std::setw(8) << std::setfill('0') << address << ";R" << std::dec << INST.rd.to_int() << ";0x" << std::hex << std::setw(8) << std::setfill('0') << dataWrite << endl;
             break;
 
         case 10:// SW
             if (BH & 3) cerr << "Escritura palabra desalineada @" << address << endl;
             accessCache(address, word, true, dataWrite);
             instOut.write(INST);
-            if (PRINT) cout << "Palabra " << "0x" << std::hex << std::setw(8) << std::setfill('0') << word << " escrita en cache";
-            if (PRINT_LS) cout << ";STORE;0x" << std::hex << std::setw(8) << std::setfill('0') << address << ";R" << std::dec << INST.rd.to_int() << ";0x" << std::hex << std::setw(8) << std::setfill('0') << word << endl;
+            if (PRINT) cout << "Palabra " << "0x" << std::hex << std::setw(8) << std::setfill('0') << dataWrite << " escrita en cache";
+            if (PRINT_LS) cout << ";" << tiempo << ";STORE;0x" << std::hex << std::setw(8) << std::setfill('0') << address << ";R" << std::dec << INST.rd.to_int() << ";0x" << std::hex << std::setw(8) << std::setfill('0') << dataWrite << endl;
             break;
 
         case 15:// Passthrough
