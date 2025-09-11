@@ -2,17 +2,14 @@
 #define CACHEL2_H
 
 #include "mem.h"
+#include "params.h"
 #include "structsRV.h"
 #include "systemc.h"
 #include <cmath>
 #include <deque>
 #include <vector>
 
-#define NUMLINES_L2 16
-#define ASSOCIATIVITY_L2 1
-#define USEFIFO_L2 true
-#define LATENCY_CYCLES_L2 2
-#define LATENCY_CYCLES_MEM 3
+
 
 SC_MODULE(cacheL2) {
 public:

@@ -36,6 +36,7 @@
     <ClInclude Include="Codigo SystemC\decod.h" />
     <ClInclude Include="Codigo SystemC\fetch.h" />
     <ClInclude Include="Codigo SystemC\mem.h" />
+    <ClInclude Include="Codigo SystemC\params.h" />
     <ClInclude Include="Codigo SystemC\structsRV.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">

@@ -2,15 +2,11 @@
 #define FETCH_H
 
 #include "cacheL2.h"
+#include "params.h"
 #include "systemc.h"
 #include "structsRV.h"
 #include <deque>
 #include <vector>
-
-#define NUMLINES_L1_I 16
-#define WORDSPERLINE_L1_I 4
-#define ASSOCIATIVITY_L1_I 1// 1 = directa, 2 = 2 vías
-#define USEFIFO_L1_I false  // si no, usa LRU
 
 SC_MODULE(fetch) {
 public:

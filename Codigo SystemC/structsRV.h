@@ -2,8 +2,8 @@
 #define STRUCTSRV_H
 
 #include "systemc.h"
+#include "params.h"
 #include <string>
-#define WORDSPERLINE_L2 4
 #define PRINT true
 
 using namespace std;

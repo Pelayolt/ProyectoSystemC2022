@@ -3,6 +3,7 @@
 
 #include "mem.h"
 #include "structsRV.h"
+#include "params.h"
 #include "systemc.h"
 #include <algorithm>
 #include <cmath>
@@ -11,12 +12,6 @@
 #include <vector>
 #include <queue>
 #include <bitset>
-
-// Parámetros de configuración de la caché L1
-#define WORDSPERLINE_L1_D 2
-#define NUMLINES_L1_D 16
-#define ASSOCIATIVITY_L1_D 1
-#define MAX_SIZE_QUEUE 8
 
 SC_MODULE(dataMem) {
 public:
