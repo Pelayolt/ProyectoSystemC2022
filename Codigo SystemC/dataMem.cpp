@@ -186,7 +186,7 @@ void dataMem::registro() {
     if (INST.address > 0x60c4)
         cout << "";
 
-    if (tiempo >= 189396)
+    if (tiempo >= 188420)
         cout << "";
 
 
@@ -195,11 +195,18 @@ void dataMem::registro() {
         if (!waitingL2) {
             startL2Request(address, false, 0);
             if (PRINT) fprintf(fout1, "Fallo en cache, solicitando dato a cacheL2");
-            
+
         } else if (isL2RequestCompleteR() || isL2RequestCompleteW()) {
         } else if (PRINT) {
-            fprintf(fout1, "Esperando a que cacheL2 envie el dato"); 
+            fprintf(fout1, "Esperando a que cacheL2 procese la solicitud");
         }
+
+        INST.wReg = false;
+        instOut.write(INST);
+        return;
+    } else if (opCode > 8 && opCode < 15 && waitingL2){
+        isL2RequestCompleteR();
+        isL2RequestCompleteW();
 
         INST.wReg = false;
         instOut.write(INST);
@@ -237,8 +244,8 @@ void dataMem::registro() {
             INST.dataOut = decodeReadData(opCode, word, BH);
             instOut.write(INST);
             if (PRINT) {
-                fprintf(fout1, "Palabra 0x%08X encontrada en cache", static_cast<unsigned int>(word));
-                fprintf(fout2, "%.0f;LOAD;0x%08X;R%u;0x%08X\n", tiempo, static_cast<unsigned int>(address), static_cast<unsigned int>(INST.rd.to_uint()), static_cast<unsigned int>(word));
+                fprintf(fout1, "Palabra 0x%08X encontrada en cache", static_cast<unsigned int>(INST.dataOut));
+                fprintf(fout2, "%.0f;LOAD;0x%08X;R%u;0x%08X;0x%08X\n", tiempo, static_cast<unsigned int>(address), static_cast<unsigned int>(INST.rd.to_uint()), static_cast<unsigned int>(INST.dataOut), static_cast<unsigned int>(MEM->readWord(address)));
             }
             break;
 
@@ -249,7 +256,7 @@ void dataMem::registro() {
             instOut.write(INST);
             if (PRINT) {
                 fprintf(fout1, "Palabra 0x%08X escrita en cache", static_cast<unsigned int>(word));
-                fprintf(fout2, "%.0f;STORE;0x%08X;R%u;0x%08X\n", tiempo, static_cast<unsigned int>(address), static_cast<unsigned int>(INST.rd.to_uint()), static_cast<unsigned int>(word)); 
+                fprintf(fout2, "%.0f;STORE;0x%08X;R%u;0x%08X;\n", tiempo, static_cast<unsigned int>(address), static_cast<unsigned int>(INST.rd.to_uint()), static_cast<unsigned int>(word)); 
             }
                 break;
 
@@ -260,7 +267,7 @@ void dataMem::registro() {
             instOut.write(INST);
             if (PRINT) {
                 fprintf(fout1, "Palabra 0x%08X escrita en cache", static_cast<unsigned int>(word));
-                fprintf(fout2, "%.0f;STORE;0x%08X;R%u;0x%08X\n", tiempo, static_cast<unsigned int>(address), static_cast<unsigned int>(INST.rd.to_uint()), static_cast<unsigned int>(word));
+                fprintf(fout2, "%.0f;STORE;0x%08X;R%u;0x%08X;\n", tiempo, static_cast<unsigned int>(address), static_cast<unsigned int>(INST.rd.to_uint()), static_cast<unsigned int>(word));
             }
             break;
 
@@ -270,7 +277,7 @@ void dataMem::registro() {
             instOut.write(INST);
             if (PRINT) {
                 fprintf(fout1, "Palabra 0x%08X escrita en cache", static_cast<unsigned int>(dataWrite));
-                fprintf(fout2, "%.0f;STORE;0x%08X;R%u;0x%08X\n", tiempo, static_cast<unsigned int>(address), static_cast<unsigned int>(INST.rd.to_uint()), static_cast<unsigned int>(dataWrite));
+                fprintf(fout2, "%.0f;STORE;0x%08X;R%u;0x%08X;\n", tiempo, static_cast<unsigned int>(address), static_cast<unsigned int>(INST.rd.to_uint()), static_cast<unsigned int>(dataWrite));
             }
             break;
 

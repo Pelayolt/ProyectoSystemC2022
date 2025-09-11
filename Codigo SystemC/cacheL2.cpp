@@ -90,7 +90,7 @@ void cacheL2::cacheL2_process() {
 
                 for (unsigned i = 0; i < WORDSPERLINE_L2; ++i) {
                     sc_uint<32> currAddr = baseAddr + i * 4;
-                    sc_int<32> word = MEM->isValidAddress(currAddr) ? MEM->readWord(currAddr) : 0;
+                    sc_int<32> word = MEM->isValidAddress(currAddr) ? MEM->readWord(currAddr) : 0x0000dead;
 
                     setWord(newline, i, word);
                     setWord(buffer_out, i, word);
@@ -148,7 +148,7 @@ void cacheL2::cacheL2_process() {
 
                 for (unsigned i = 0; i < WORDSPERLINE_L2; ++i) {
                     sc_uint<32> currAddr = (addr_buf & ~(WORDSPERLINE_L2 * 4 - 1)) + i * 4;
-                    sc_int<32> mem_word = MEM->isValidAddress(currAddr) ? MEM->readWord(currAddr) : 0;
+                    sc_int<32> mem_word = MEM->readWord(currAddr);
                     sc_int<32> word = (i == word_offset) ? data : (sc_int<32>) mem_word;
 
                     setWord(newline, i, word);
