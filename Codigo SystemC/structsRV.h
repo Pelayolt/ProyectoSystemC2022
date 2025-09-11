@@ -4,8 +4,7 @@
 #include "systemc.h"
 #include <string>
 #define WORDSPERLINE_L2 4
-#define PRINT false
-#define PRINT_LS true
+#define PRINT true
 
 using namespace std;
 
