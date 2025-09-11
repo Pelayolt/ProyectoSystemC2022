@@ -1,6 +1,7 @@
 #include"alu.h"
 #include <iomanip>
 
+extern FILE *fout1;
 
 void alu::registro(){
 
@@ -58,10 +59,7 @@ void alu::registro(){
 		INST.aluOut = res; 	
 
 		instOut.write(INST); 
-		if (PRINT) {
-            cout << ";" << "EXE;";
-            cout << "0x" << std::hex << std::setw(8) << std::setfill('0') << static_cast<uint32_t>(INST.I);
-        }
+		if (PRINT) fprintf(fout1, ";EXE;0x%08X", static_cast<unsigned int>(INST.I));
 
 	}
 

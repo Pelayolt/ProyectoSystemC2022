@@ -1,7 +1,7 @@
 #include"dataMem.h"
 #include <iomanip>
 
-extern FILE *fout;
+extern FILE *fout1, *fout2;
 
 void dataMem::initCache() {
     cache.resize(NUMLINES_L1_D);
@@ -122,7 +122,8 @@ bool dataMem::isL2RequestCompleteR() {
         read_req_cacheL2.write(false);
         storeLineToL1(addr_buf, l2_line_buf);
         waitingL2 = false;
-        if (PRINT) cout << "Dato recibido y almacenado en cache";
+        if (PRINT) fprintf(fout1, "Dato recibido y almacenado en cache");
+        
         return true;
     }
     return false;
@@ -132,8 +133,8 @@ bool dataMem::isL2RequestCompleteW() {
     if (write_ready_cacheL2.read()) {
         write_req_cacheL2.write(false);
         waitingL2 = false;
-        if (PRINT) cout << "Dato escrito en cacheL2";
-
+        if (PRINT) fprintf(fout1, "Dato escrito en cacheL2");
+        
         return true;
     }
     return false;
@@ -157,8 +158,8 @@ void dataMem::registro() {
     instruction pendInst;
     bool serveQueue = !pendingQueue.empty() && (nextInst.memOp < 15 || !nextInst.wReg || nextInst.I == 0x00000013);
 
-    if (PRINT) cout << ";" << "CACHE DATOS;";
-
+    if (PRINT) fprintf(fout1, ";CACHE DATOS;");
+    
     if (nextInst.memOp < 15) {
         pendingQueue.push(nextInst);
         updatePendingMask();
@@ -171,7 +172,7 @@ void dataMem::registro() {
 
 
     if (PRINT) {
-        cout << "0x" << std::hex << std::setw(8) << std::setfill('0') << static_cast<uint32_t>(INST.I) << ";";
+        fprintf(fout1, "0x%08X;", static_cast<unsigned int>(INST.I));
         printPendings();
     }
 
@@ -193,10 +194,11 @@ void dataMem::registro() {
         // MISS -> encolamos y lanzamos refill si hace falta
         if (!waitingL2) {
             startL2Request(address, false, 0);
-            if (PRINT) cout << "Fallo en cache, solicitando dato a cacheL2";
+            if (PRINT) fprintf(fout1, "Fallo en cache, solicitando dato a cacheL2");
+            
         } else if (isL2RequestCompleteR() || isL2RequestCompleteW()) {
         } else if (PRINT) {
-            cout << "Esperando a que cacheL2 envie el dato";
+            fprintf(fout1, "Esperando a que cacheL2 envie el dato"); 
         }
 
         INST.wReg = false;
@@ -208,7 +210,8 @@ void dataMem::registro() {
     }
 
     if (isL2RequestCompleteR() || isL2RequestCompleteW()) {
-        if (PRINT) cout << " y ";
+        if (PRINT) fprintf(fout1, " y ");
+
     }
 
     /*
@@ -233,8 +236,10 @@ void dataMem::registro() {
         
             INST.dataOut = decodeReadData(opCode, word, BH);
             instOut.write(INST);
-            if (PRINT) cout << "Palabra " << "0x" << std::hex << std::setw(8) << std::setfill('0') << word << " encontrada en cache";
-            fprintf(fout, ";%.0f;LOAD;0x%08X;R%u;0x%08X\n", tiempo, static_cast<unsigned int>(address), static_cast<unsigned int>(INST.rd.to_uint()), static_cast<unsigned int>(word));
+            if (PRINT) {
+                fprintf(fout1, "Palabra 0x%08X encontrada en cache", static_cast<unsigned int>(word));
+                fprintf(fout2, "%.0f;LOAD;0x%08X;R%u;0x%08X\n", tiempo, static_cast<unsigned int>(address), static_cast<unsigned int>(INST.rd.to_uint()), static_cast<unsigned int>(word));
+            }
             break;
 
         // ----- Escrituras -----
@@ -242,31 +247,38 @@ void dataMem::registro() {
             word.range(8 * BH + 7, 8 * BH) = dataWrite.range(7, 0);
             accessCache(address, word, true, word);
             instOut.write(INST);
-            if (PRINT) cout << "Palabra " << "0x" << std::hex << std::setw(8) << std::setfill('0') << dataWrite << " escrita en cache";
-            fprintf(fout, ";%.0f;STORE;0x%08X;R%u;0x%08X\n", tiempo, static_cast<unsigned int>(address), static_cast<unsigned int>(INST.rd.to_uint()), static_cast<unsigned int>(word));
-            break;
+            if (PRINT) {
+                fprintf(fout1, "Palabra 0x%08X escrita en cache", static_cast<unsigned int>(word));
+                fprintf(fout2, "%.0f;STORE;0x%08X;R%u;0x%08X\n", tiempo, static_cast<unsigned int>(address), static_cast<unsigned int>(INST.rd.to_uint()), static_cast<unsigned int>(word)); 
+            }
+                break;
 
         case 9:// SH
             if (BH & 1) cerr << "Escritura desalineada @" << address << endl;
             word.range(8 * BH + 15, 8 * BH) = dataWrite.range(15, 0);
             accessCache(address, word, true, word);
             instOut.write(INST);
-            if (PRINT) cout << "Palabra " << "0x" << std::hex << std::setw(8) << std::setfill('0') << dataWrite << " escrita en cache";  
-            fprintf(fout, ";%.0f;STORE;0x%08X;R%u;0x%08X\n", tiempo, static_cast<unsigned int>(address), static_cast<unsigned int>(INST.rd.to_uint()), static_cast<unsigned int>(word));
+            if (PRINT) {
+                fprintf(fout1, "Palabra 0x%08X escrita en cache", static_cast<unsigned int>(word));
+                fprintf(fout2, "%.0f;STORE;0x%08X;R%u;0x%08X\n", tiempo, static_cast<unsigned int>(address), static_cast<unsigned int>(INST.rd.to_uint()), static_cast<unsigned int>(word));
+            }
             break;
 
         case 10:// SW
             if (BH & 3) cerr << "Escritura palabra desalineada @" << address << endl;
             accessCache(address, word, true, dataWrite);
             instOut.write(INST);
-            if (PRINT) cout << "Palabra " << "0x" << std::hex << std::setw(8) << std::setfill('0') << dataWrite << " escrita en cache";
-            fprintf(fout, ";%.0f;STORE;0x%08X;R%u;0x%08X\n", tiempo, static_cast<unsigned int>(address), static_cast<unsigned int>(INST.rd.to_uint()), static_cast<unsigned int>(dataWrite));
+            if (PRINT) {
+                fprintf(fout1, "Palabra 0x%08X escrita en cache", static_cast<unsigned int>(dataWrite));
+                fprintf(fout2, "%.0f;STORE;0x%08X;R%u;0x%08X\n", tiempo, static_cast<unsigned int>(address), static_cast<unsigned int>(INST.rd.to_uint()), static_cast<unsigned int>(dataWrite));
+            }
             break;
 
         case 15:// Passthrough
             INST.dataOut = INST.aluOut;
             instOut.write(INST);
-            if (PRINT) cout << "No usa cache";
+            if (PRINT) fprintf(fout1, "No usa cache");
+
             break;
 
         default:
@@ -300,14 +312,16 @@ sc_uint<32> dataMem::getWord(const L2CacheLine &line, int idx) {
 
 void dataMem::printPendings() {
     std::queue<instruction> tmp = pendingQueue;// copia temporal
-    cout << "Pendientes;";
+    fprintf(fout1, "Pendientes;");
+
     while (!tmp.empty()) {
         instruction p = tmp.front();
         tmp.pop();
         if (!tmp.empty())
-            cout << "0x" << std::hex << std::setw(8) << std::setfill('0') << p.I << " | ";
+            fprintf(fout1, "0x%08X | ", static_cast<unsigned int>(p.I));
+
         else
-            cout << "0x" << std::hex << std::setw(8) << std::setfill('0') << p.I;
+            fprintf(fout1, "0x%08X", static_cast<unsigned int>(p.I));
     }
-    cout << ";";
+    fprintf(fout1, ";");
 }

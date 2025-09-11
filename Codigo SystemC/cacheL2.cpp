@@ -2,6 +2,8 @@
 #include <algorithm>
 #include <iomanip>
 
+extern FILE *fout1;
+
 
 SC_HAS_PROCESS(cacheL2);
 
@@ -39,7 +41,7 @@ void cacheL2::cacheL2_process() {
     write_ready.write(false);
     read_ready.write(false);
 
-    if (PRINT) cout << ";CACHE L2;";
+    if (PRINT) fprintf(fout1, ";CACHE L2;");
 
     if (!pending_response) {
         if (write_req.read() && !notifying_to_dataMem) {
@@ -102,13 +104,16 @@ void cacheL2::cacheL2_process() {
                 
                 latency_counter = LATENCY_CYCLES_L2 + LATENCY_CYCLES_MEM;
                 if (PRINT && client_pending == FETCH) 
-                    cout << "Fallo en cache, esperando instruccion a cache (" << LATENCY_CYCLES_L2 << " clk) + mem (" << LATENCY_CYCLES_MEM << " clk);";
+                    fprintf(fout1, "Fallo en cache, esperando instruccion a cache (%d clk) + mem (%d clk)", LATENCY_CYCLES_L2, LATENCY_CYCLES_MEM);
                 else if (PRINT && client_pending == DATAMEM_R)
-                    cout << "Fallo en cache, esperando dato a cache (" << LATENCY_CYCLES_L2 << " clk) + mem (" << LATENCY_CYCLES_MEM << " clk);";
+                    fprintf(fout1, "Fallo en cache, esperando dato a cache (%d clk) + mem (%d clk)", LATENCY_CYCLES_L2, LATENCY_CYCLES_MEM);
+
             } else {
                 latency_counter = LATENCY_CYCLES_L2;
-                if (PRINT && client_pending == FETCH) cout << "Acierto en cache, esperando instruccion a cache (" << LATENCY_CYCLES_L2 << " clk);";
-                else if (PRINT && client_pending == DATAMEM_R) cout << "Acierto en cache, esperando dato a cache (" << LATENCY_CYCLES_L2 << " clk);";
+                if (PRINT && client_pending == FETCH)
+                    fprintf(fout1, "Acierto en cache, esperando instruccion a cache (%d clk)", LATENCY_CYCLES_L2);
+                else if (PRINT && client_pending == DATAMEM_R)
+                    fprintf(fout1, "Acierto en cache, esperando dato a cache (%d clk)", LATENCY_CYCLES_L2);
             }
 
             pending_response = true;
@@ -151,17 +156,17 @@ void cacheL2::cacheL2_process() {
 
                 writeLine(addr_buf, newline);
                 latency_counter = LATENCY_CYCLES_L2 + LATENCY_CYCLES_MEM;
-                if (PRINT) cout << "Fallo en cache, esperando dato a cache y escritura a mem (" << LATENCY_CYCLES_L2 << " clk) + mem (" << LATENCY_CYCLES_MEM << " clk);";
+                if (PRINT) 
+                    fprintf(fout1, "Fallo en cache, esperando dato a cache y escritura a mem (%d clk) + mem (%d clk)", LATENCY_CYCLES_L2, LATENCY_CYCLES_MEM);
             } else {
                 latency_counter = LATENCY_CYCLES_L2;
-                if (PRINT) cout << "Acierto en cache, esperando escritura a mem (" << LATENCY_CYCLES_L2 << " clk);";
+                if (PRINT) fprintf(fout1, "Acierto en cache, esperando escritura a mem (%d clk)", LATENCY_CYCLES_L2);
             }
             //latency_counter = 1;
             MEM->writeWord(addr_buf, data);// Write-through
             pending_response = true;
 
-        } else if (PRINT)
-            cout << ";";
+        }
     }
 
     notifying_to_dataMem = false;
@@ -173,17 +178,17 @@ void cacheL2::cacheL2_process() {
             fetch_line_out.write(buffer_out);
             fetch_ready.write(true);
             notifying_to_fetch = true;
-            if (PRINT) cout << "Instruccion almacenada en cache";
+            if (PRINT) fprintf(fout1, "Instruccion almacenada en cache");
         } else if (client_pending == DATAMEM_R) {
             dataMem_line_out.write(buffer_out);
             read_ready.write(true);
             notifying_to_dataMem = true;
-            if (PRINT) cout << "Dato almacenado en cache";
+            if (PRINT) fprintf(fout1, "Dato almacenado en cache");
         } else if (client_pending == DATAMEM_W) {
             dataMem_line_out.write(buffer_out);
             write_ready.write(true);
             notifying_to_dataMem = true;
-            if (PRINT) cout << "Dato guardado en memoria";
+            if (PRINT) fprintf(fout1, "Dato guardado en memoria");
         }
 
         pending_response = false;

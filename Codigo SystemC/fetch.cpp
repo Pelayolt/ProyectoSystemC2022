@@ -2,6 +2,8 @@
 #include <iostream>
 #include <iomanip>
 
+extern FILE *fout1;
+
 
 SC_HAS_PROCESS(fetch);
 
@@ -122,8 +124,8 @@ sc_uint<32> fetch::fetchFromCache(sc_uint<32> addr, bool &isHit) {
 void fetch::registro() {
     sc_uint<32> tmp = PCext.read();
     tiempo = sc_time_stamp().to_double() / 1000.0;
-    if (PRINT) cout << ";COUNTERS;" << std::dec << tiempo << ";";
-
+    if (PRINT) fprintf(fout1, ";COUNTERS;%.0f;", tiempo);
+    
     if (rst.read()) {
         PC = 0;
         INST.I = 0x00000013;
@@ -136,8 +138,7 @@ void fetch::registro() {
         return;
     }
 
-    if (PRINT) cout << "0x" << std::hex << std::setw(8) << std::setfill('0') << PC;
-    if (PRINT) cout << ";" << "CACHE INSTR;";
+    if (PRINT) fprintf(fout1, "0x%08X;CACHE INSTR;", static_cast<unsigned int>(PC));
 
     switch (state) {
         case IDLE: {
@@ -146,10 +147,10 @@ void fetch::registro() {
                 INST.address = PC;
                 PCout.write(PC);
                 PC = newPC;
-                if (PRINT) cout << "Burbuja";
+                if (PRINT) fprintf(fout1, "Burbuja");
             } else if (hazard.read()) {
                 PC = newPC;
-                if (PRINT) cout << "Riesgo";
+                if (PRINT) fprintf(fout1, "Riesgo");
             } else {
                 bool hit;
                 sc_uint<32> instVal = fetchFromCache(PC, hit);
@@ -160,7 +161,7 @@ void fetch::registro() {
                     PCout.write(PC);
                     ++numInst;
                     cache_hits++;
-                    if (PRINT) cout << "Instruccion " << "0x" << std::hex << std::setw(8) << std::setfill('0') << static_cast<uint32_t>(INST.I) << " encontrada";
+                    if (PRINT) fprintf(fout1, "Instruccion 0x%08X encontrada", static_cast<unsigned int>(INST.I));
                     PC = newPC;
                 } else {
                     cache_misses++;
@@ -169,7 +170,7 @@ void fetch::registro() {
                     PCout.write(PC);
                     ++numInst;
                     startL2Request(PC);
-                    if (PRINT) cout << "Fallo en cache, solicitando instruccion a cacheL2";
+                    if (PRINT) fprintf(fout1, "Fallo en cache, solicitando instruccion a cacheL2");
                 }
             }
             break;
@@ -179,9 +180,9 @@ void fetch::registro() {
         case WAIT_L2: {
             if (isL2RequestComplete()) {
                 storeLineToL1();
-                if (PRINT) cout << "Instruccion recibida y almacenada en cache";
+                if (PRINT) fprintf(fout1, "Instruccion recibida y almacenada en cache");
             } else {    
-                if (PRINT) cout << "Esperando a que cacheL2 envie la instruccion";
+                if (PRINT) fprintf(fout1, "Esperando a que cacheL2 envie la instruccion");
             }
             INST.I = 0x00000013;
             INST.address = PC;
