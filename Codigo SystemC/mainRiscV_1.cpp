@@ -4,6 +4,7 @@
 
 #include "coreRiscV.h"
 
+FILE *fout2;
 
 int sc_main(int nargs, char *vargs[]) {
 
@@ -11,6 +12,12 @@ int sc_main(int nargs, char *vargs[]) {
     sc_signal<bool> rst;
     FILE *elf;
     time_t begin, end;
+
+    fout2 = fopen("..\\Excels\\Output_comparar.txt", "w");
+    if (!fout2) {
+        perror("No se pudo abrir Output_comparar.txt");
+        return 1;
+    }
 
     if (nargs != 2) {
         cerr << "ERROR. Se debe especificar el archivo ELF" << endl;
@@ -42,6 +49,8 @@ int sc_main(int nargs, char *vargs[]) {
     time(&end);
 
     printf("Tiempo %ld\n", end - begin);
+
+    fclose(fout2);
 
     return 0;
 }
