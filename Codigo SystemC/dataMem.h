@@ -29,7 +29,7 @@ public:
     sc_out<bool> write_req_cacheL2;
 
 
-    // Acceso a memoria directa (solo en simulaciones sin caché)
+    // Acceso a memoria directa (solo para Debug)
     mem *MEM;
 
     void registro();
@@ -46,7 +46,6 @@ public:
         INST.opA = INST.opB = INST.val2 = INST.aluOut = INST.dataOut = 0x0000dead;
         std::strcpy(INST.desc, "???");
 
-        state = IDLE;
         current_lru = 0;
         cache.resize(NUMLINES_L1_D);
 
@@ -61,38 +60,14 @@ private:
     struct CacheSet {
         std::deque<dataCacheLine> ways;
     };
-    enum MemState { IDLE,
-                    WAIT_L2,
-                    WRITEBACK };
-
-    enum WBState { WB_IDLE,
-                   WB_WRITE };
-
-
     std::vector<CacheSet> cache;
+    std::queue<instruction> pendingQueue;
 
     unsigned current_lru;
     bool waitingL2 = false;
     sc_uint<32> addr_buf;
     L2CacheLine l2_line_buf;
-    sc_uint<32> pendingAddr;
-    sc_int<32> pendingData;
-    sc_uint<4> pendingOp;
-    bool pendingWrite = false;
-    MemState state = IDLE;
-
-    std::queue<instruction> pendingQueue;
- 
-    WBState writeBackState = WB_IDLE;
-    bool writeBackPending = false;
-    dataCacheLine writeBackLine;
-    sc_uint<32> writeBackAddr;
-    unsigned writeBackIndex = 0;
-
-    bool pendingWriteThrough = false;
     double tiempo;
-
-    int loadCounter = 0;
 
     void initCache();
     void updatePendingMask();

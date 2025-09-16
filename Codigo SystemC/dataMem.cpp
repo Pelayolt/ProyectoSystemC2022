@@ -73,32 +73,16 @@ void dataMem::storeLineToL1(sc_uint<32> addr, const L2CacheLine &lineL2) {
 
     CacheSet &set = cache[index];
     if (set.ways.size() >= ASSOCIATIVITY_L1_D) {
-        auto lru_it = std::min_element(set.ways.begin(), set.ways.end(),
-                                       [](const dataCacheLine &a, const dataCacheLine &b) {
-                                           return a.lru_counter < b.lru_counter;
-                                       });
-
-        dataCacheLine &victim = *lru_it;
-
-        if (victim.dirty && !writeBackPending) {
-            // Calcula la dirección base de la línea víctima
-            unsigned offBits = int(log2(WORDSPERLINE_L1_D));
-            unsigned idxBits = int(log2(NUMLINES_L1_D));
-            sc_uint<32> victim_addr = ((victim.tag << (idxBits + offBits)) | (index << offBits)) << 2;
-
-            writeBackPending = true;
-            writeBackLine = victim;
-            writeBackAddr = victim_addr;
-            writeBackIndex = 0;
-
-            // Aquí NO eliminamos la línea aún, se hará cuando termine el write-back
-            return;
+        if (USEFIFO_L1_D)
+            set.ways.pop_front();
+        else {
+            auto lru_it = std::min_element(set.ways.begin(), set.ways.end(),
+                                           [](const dataCacheLine &a, const dataCacheLine &b) {
+                                               return a.lru_counter < b.lru_counter;
+                                           });
+            set.ways.erase(lru_it);
         }
-
-        // Elimina línea si no estaba sucia
-        set.ways.erase(lru_it);
     }
-
 
     set.ways.push_back(newline);
 }
@@ -146,8 +130,6 @@ void dataMem::registro() {
 
     if (rst.read()) {
         instOut.write(INST);
-        state = IDLE;
-        writeBackPending = false;
         waitingL2 = false;
         while (!pendingQueue.empty()) pendingQueue.pop();
         updatePendingMask();
@@ -155,10 +137,7 @@ void dataMem::registro() {
     }
 
     instruction nextInst = I.read();
-    instruction pendInst;
     bool serveQueue = !pendingQueue.empty() && (nextInst.memOp < 15 || !nextInst.wReg || nextInst.I == 0x00000013);
-
-    if (PRINT) fprintf(fout1, ";CACHE DATOS;");
     
     if (nextInst.memOp < 15) {
         pendingQueue.push(nextInst);
@@ -170,12 +149,10 @@ void dataMem::registro() {
     else
         INST = nextInst;
 
-
     if (PRINT) {
-        fprintf(fout1, "0x%08X;", static_cast<unsigned int>(INST.I));
+        fprintf(fout1, ";CACHE DATOS;0x%08X;", static_cast<unsigned int>(INST.I));
         printPendings();
     }
-
 
     sc_int<32> address = INST.aluOut;
     int BH = address & 3;
@@ -183,12 +160,8 @@ void dataMem::registro() {
     sc_uint<4> opCode = INST.memOp;
     sc_int<32> word;
 
-    if (INST.address > 0x60c4)
-        cout << "";
-
     if (tiempo >= 188420)
         cout << "";
-
 
     if (opCode < 15 && !accessCache(address, word, false, 0)) {
         // MISS -> encolamos y lanzamos refill si hace falta
@@ -205,6 +178,7 @@ void dataMem::registro() {
         instOut.write(INST);
         return;
     } else if (opCode > 8 && opCode < 15 && waitingL2){
+        // Esperando a que se complete la operacion en L2 previa para volver a escribir y potencialmente escribir en L2
         isL2RequestCompleteR();
         isL2RequestCompleteW();
 
@@ -212,23 +186,14 @@ void dataMem::registro() {
         instOut.write(INST);
         return;
     } else if (opCode < 15) {
+        // HIT -> Sacamos de la cola y procesamos el load o store
         pendingQueue.pop();
         updatePendingMask();
     }
 
-    if (isL2RequestCompleteR() || isL2RequestCompleteW()) {
-        if (PRINT) fprintf(fout1, " y ");
-
-    }
-
-    /*
-    if (opCode < 15 && opCode >= 8) {
-        printf("STORE;%.0lf;0x%08x;%02d;0x%08x\n", tiempo, INST.address.to_int(), INST.rd.to_int(), word.to_int());
-    }else if (opCode < 8) {
-        printf("LOAD;%.0lf;0x%08x;%02d;0x%08x\n", tiempo, INST.address.to_int(), INST.rd.to_int(), word.to_int());
-    }
-    */
-
+    if ((isL2RequestCompleteR() || isL2RequestCompleteW()) && PRINT)
+        fprintf(fout1, " y ");
+    
     switch (opCode) {
         // ----- Lecturas -----
         case 0:
