@@ -13,7 +13,7 @@
 #define ASSOCIATIVITY_L1_D 1
 #define USEFIFO_L1_D true
 #define USEWBACK_L1_D false		// false = write-through, true = write-back
-#define MAX_SIZE_QUEUE 8
+#define MAX_SIZE_QUEUE 2		// El tamaño mínimo de la cola debe de ser 2 para poder manejar el pipeline
 
 // Parámetros de configuración de la caché L2
 #define NUMLINES_L2 16

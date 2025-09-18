@@ -27,8 +27,8 @@ void dataMem::updatePendingMask() {
             mask.set(p.rd);
         tmp.pop();
     }
-
     pendingRdMask.write(mask.to_ulong());
+    queueAvailableSpace.write(MAX_SIZE_QUEUE - pendingQueue.size());
 }
 
 
@@ -56,6 +56,7 @@ bool dataMem::accessCache(sc_int<32> addr, sc_int<32> &word, bool isWrite, sc_in
 
     return false;
 }
+
 void dataMem::storeLineToL1(sc_uint<32> addr, const L2CacheLine &lineL2) {
     sc_uint<32> index = (addr >> 2) / WORDSPERLINE_L1_D % NUMLINES_L1_D;
     sc_uint<32> tag = addr >> (2 + int(log2(WORDSPERLINE_L1_D)) + int(log2(NUMLINES_L1_D)));

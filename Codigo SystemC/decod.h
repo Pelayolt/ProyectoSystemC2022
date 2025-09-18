@@ -14,7 +14,7 @@ public:
 	sc_in< sc_uint<32> >   	PCin;
 	sc_in< instruction >   	fbEx, fbMem, fbWB;
     sc_in<sc_uint<32>>		pendingRdMask;
-
+    sc_in<sc_uint<32>>		queueAvailableSpace;
 
 	sc_out<instruction>		instOut; 
 

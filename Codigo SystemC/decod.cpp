@@ -48,7 +48,7 @@ void decod::decoding() {
     sc_uint<5> preAlu;
     sc_uint<4> preMem;
     sc_int<21> jalOffset;// signed
-    bool uRs1, uRs2, hRs1, hRs2, jump, preWrite;
+    bool uRs1, uRs2, hRs1, hRs2, hQL1D, jump, preWrite;
     double tiempo;
 
     tiempo = sc_time_stamp().to_double() / 1000.0;
@@ -67,7 +67,6 @@ void decod::decoding() {
 
     opCode = I(6, 2);
     uRs1 = uRs2 = false;
-
 
     switch (opCode) {
         case 0:// Loads
@@ -279,13 +278,15 @@ void decod::decoding() {
             cerr << "    ERROR AT: " << INST << endl;
     };
 
-
     instruction iX, iM, iW;
     iX = fbEx.read();
     iM = fbMem.read();
     iW = fbWB.read();
 
+    hQL1D = false;
     sc_uint<32> mask = pendingRdMask.read();
+    sc_uint<32> queueAS = queueAvailableSpace.read(); 
+    int pending_l_s = 0;
 
     if (!INST.rs1)
         hRs1 = false;
@@ -303,7 +304,16 @@ void decod::decoding() {
                (iW.wReg && (iW.rd == INST.rs2)) ||
                mask[INST.rs2];
 
-    if ((uRs1 && hRs1) || (uRs2 && hRs2)) {// hazard
+    pending_l_s += (strcmp(INST.desc, "load") == 0 | strcmp(INST.desc, "store") == 0);
+    pending_l_s += (strcmp(iX.desc, "load") == 0 | strcmp(iX.desc, "store") == 0);
+    pending_l_s += (strcmp(iM.desc, "load") == 0 | strcmp(iM.desc, "store") == 0);
+
+    hQL1D = queueAS < pending_l_s;
+
+    if (hQL1D)
+        cout << "";
+
+    if ((uRs1 && hRs1) || (uRs2 && hRs2) || hQL1D) {// hazard
         hazard.write(true);
         bubble.write(false);
         C_aluOp = (0);

@@ -19,6 +19,7 @@ public:
     sc_in<instruction> I;
     sc_out<instruction> instOut;
     sc_out<sc_uint<32>> pendingRdMask;
+    sc_out<sc_uint<32>> queueAvailableSpace;
 
     sc_in<bool> write_ready_cacheL2;
     sc_in<bool> read_ready_cacheL2;
@@ -65,6 +66,7 @@ private:
 
     unsigned current_lru;
     bool waitingL2 = false;
+    bool pendingWriteL2 = false;
     sc_uint<32> addr_buf;
     L2CacheLine l2_line_buf;
     double tiempo;

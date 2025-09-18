@@ -70,6 +70,7 @@ public:
 		instDecod->fbWB(iMW);
 		instDecod->instOut(iDX);
         instDecod->pendingRdMask(Mask);
+        instDecod->queueAvailableSpace(QS);
 		instDecod->PCout(PC_DecodFetch);
 
 		instAlu->clk(clk);
@@ -82,6 +83,7 @@ public:
 		instDataMem->I(iXM);
 		instDataMem->instOut(iMW);
         instDataMem->pendingRdMask(Mask);
+        instDataMem->queueAvailableSpace(QS);
 
         instDataMem->read_req_cacheL2(req_L2_dataMem);
         instDataMem->write_req_cacheL2(write_req);
@@ -128,6 +130,7 @@ private:
     sc_signal<sc_uint<32>> write_addr;
 
 	sc_signal<sc_uint<32>> Mask;
+    sc_signal<sc_uint<32>> QS;
 
 	sc_signal < instruction >	iFD, iDX, iXM, iMW; 
 
