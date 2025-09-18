@@ -67,22 +67,63 @@ struct instCacheLine {
 };
 
 struct dataCacheLine {
+public:
     bool valid;
     bool dirty = false;
     sc_uint<32> tag;
-    std::vector<sc_uint<32>> data;
+    sc_int<32> data[WORDSPERLINE_L1_D];
     unsigned int lru_counter = 0;
+
+    bool operator==(const dataCacheLine &other) const {
+        if (valid != other.valid || dirty != other.dirty || tag != other.tag || lru_counter != other.lru_counter)
+            return false;
+        for (unsigned i = 0; i < WORDSPERLINE_L1_D; i++) {
+            if (data[i] != other.data[i])
+                return false;
+        }
+        return true;
+    }
 };
+
+inline void sc_trace(sc_trace_file *tf, const dataCacheLine &line, const std::string &name) {
+    sc_trace(tf, line.valid, name + ".valid");
+    sc_trace(tf, line.dirty, name + ".dirty");
+    sc_trace(tf, line.tag, name + ".tag");
+    for (unsigned i = 0; i < WORDSPERLINE_L1_D; i++) {
+        sc_trace(tf, line.data[i], name + ".data" + std::to_string(i));
+    }
+    sc_trace(tf, line.lru_counter, name + ".lru");
+}
+
+inline std::ostream &operator<<(std::ostream &os, const dataCacheLine &line) {
+    os << "{ valid: " << line.valid
+       << ", dirty: " << line.dirty
+       << ", tag: 0x" << std::hex << line.tag
+       << ", data: [";
+    for (unsigned i = 0; i < WORDSPERLINE_L1_D; i++) {
+        os << "0x" << std::hex << line.data[i];
+        if (i < WORDSPERLINE_L1_D - 1) os << ", ";
+    }
+    os << "], lru: " << std::dec << line.lru_counter << " }";
+    return os;
+}
 
 struct L2CacheLine {
 public:
     bool valid;
     bool dirty = false;
     sc_uint<32> tag;
-    sc_biguint<32 * WORDSPERLINE_L2> data;
+    sc_int<32> data[WORDSPERLINE_L2];
     unsigned int lru_counter = 0;
+
     bool operator==(const L2CacheLine &other) const {
-        return valid == other.valid && tag == other.tag && data == other.data && lru_counter == other.lru_counter;
+        if (valid != other.valid || dirty != other.dirty || tag != other.tag || lru_counter != other.lru_counter)
+            return false;
+        for (unsigned i = 0; i < WORDSPERLINE_L2; i++) {
+            if (data[i] != other.data[i])
+                return false;
+        }
+        return true;
     }
 };
 
@@ -90,12 +131,23 @@ inline void sc_trace(sc_trace_file *tf, const L2CacheLine &line, const std::stri
     sc_trace(tf, line.valid, name + ".valid");
     sc_trace(tf, line.dirty, name + ".dirty");
     sc_trace(tf, line.tag, name + ".tag");
-    sc_trace(tf, line.data, name + ".data");
+    for (unsigned i = 0; i < WORDSPERLINE_L2; i++) {
+        sc_trace(tf, line.data[i], name + ".data" + std::to_string(i));
+    }
     sc_trace(tf, line.lru_counter, name + ".lru");
 }
 
 inline std::ostream &operator<<(std::ostream &os, const L2CacheLine &line) {
-    os << "{ valid: " << line.valid << ", dirty: " << line.dirty << ", tag: 0x" << std::hex << line.tag << ", data: 0x" << std::hex << line.data << ", lru: " << std::dec << line.lru_counter << " }";
+    os << "{ valid: " << line.valid
+       << ", dirty: " << line.dirty
+       << ", tag: 0x" << std::hex << line.tag
+       << ", data: [";
+    for (unsigned i = 0; i < WORDSPERLINE_L2; i++) {
+        os << "0x" << std::hex << line.data[i];
+        if (i < WORDSPERLINE_L2 - 1) os << ", ";
+    }
+    os << "], lru: " << std::dec << line.lru_counter << " }";
     return os;
 }
+
 #endif

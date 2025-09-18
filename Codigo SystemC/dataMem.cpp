@@ -1,4 +1,4 @@
-#include"dataMem.h"
+﻿#include"dataMem.h"
 #include <iomanip>
 
 extern FILE *fout1, *fout2;
@@ -11,7 +11,10 @@ void dataMem::initCache() {
             line.valid = false;
             line.dirty = false;
             line.tag = 0;
-            line.data.resize(WORDSPERLINE_L1_D, 0xDEADBEEF);
+            for (unsigned i = 0; i < WORDSPERLINE_L1_D; i++) {
+                line.data[i] = 0xDEADBEEF;
+            }
+            line.lru_counter = 0;
         }
     }
 }
@@ -31,7 +34,6 @@ void dataMem::updatePendingMask() {
     queueAvailableSpace.write(MAX_SIZE_QUEUE - pendingQueue.size());
 }
 
-
 bool dataMem::accessCache(sc_int<32> addr, sc_int<32> &word, bool isWrite, sc_int<32> writeData) {
     sc_uint<32> index = (addr >> 2) / WORDSPERLINE_L1_D % NUMLINES_L1_D;
     sc_uint<32> tag = addr >> (2 + int(log2(WORDSPERLINE_L1_D)) + int(log2(NUMLINES_L1_D)));
@@ -43,9 +45,16 @@ bool dataMem::accessCache(sc_int<32> addr, sc_int<32> &word, bool isWrite, sc_in
             if (isWrite) {
                 line.data[offset] = writeData;
 
-                // WRITE-THROUGH: escribir tambi�n en L2
-                startL2Request(addr, true, writeData);
-                line.dirty = true;
+                if (USEWBACK_L1_D) {
+                    // WRITE-BACK: marcar línea como sucia
+                    line.dirty = true;
+                } else {
+                    // WRITE-THROUGH: escribir en L2 en el siguiente ciclo
+                    pendingWriteL2 = true;
+                    pending_addr = addr;
+                    pending_line = line; 
+                }
+
             } else {
                 word = line.data[offset];
             }
@@ -54,58 +63,68 @@ bool dataMem::accessCache(sc_int<32> addr, sc_int<32> &word, bool isWrite, sc_in
         }
     }
 
-    return false;
+    return false;// MISS
 }
 
 void dataMem::storeLineToL1(sc_uint<32> addr, const L2CacheLine &lineL2) {
     sc_uint<32> index = (addr >> 2) / WORDSPERLINE_L1_D % NUMLINES_L1_D;
     sc_uint<32> tag = addr >> (2 + int(log2(WORDSPERLINE_L1_D)) + int(log2(NUMLINES_L1_D)));
     unsigned offset = ((addr >> 2) & (WORDSPERLINE_L2 - 1)) / WORDSPERLINE_L1_D;
-
-    std::vector<sc_uint<32>> lineaL1(WORDSPERLINE_L1_D);
-    for (unsigned i = 0; i < WORDSPERLINE_L1_D; ++i)
-        lineaL1[i] = getWord(lineL2, offset * WORDSPERLINE_L1_D + i);
+    unsigned l2_base = offset * WORDSPERLINE_L1_D;
 
     dataCacheLine newline;
     newline.valid = true;
     newline.tag = tag;
-    newline.data = lineaL1;
     newline.lru_counter = current_lru++;
+    newline.dirty = false;      // recién cargada desde L2 -> no sucia todavía
+
+    // Copiar desde L2 a la nueva línea, comprobando rango
+    for (unsigned i = 0; i < WORDSPERLINE_L1_D; ++i) {
+        unsigned l2_idx = l2_base + i;
+        if (l2_idx < WORDSPERLINE_L2)
+            newline.data[i] = lineL2.data[l2_idx];
+        else
+            newline.data[i] = 0xDEADBEEF; // Relleno si el índice se sale del rango
+    }
 
     CacheSet &set = cache[index];
     if (set.ways.size() >= ASSOCIATIVITY_L1_D) {
-        if (USEFIFO_L1_D)
-            set.ways.pop_front();
-        else {
-            auto lru_it = std::min_element(set.ways.begin(), set.ways.end(),
-                                           [](const dataCacheLine &a, const dataCacheLine &b) {
-                                               return a.lru_counter < b.lru_counter;
-                                           });
-            set.ways.erase(lru_it);
+        // Buscar víctima según FIFO o LRU
+        auto victim_it = USEFIFO_L1_D ? set.ways.begin() : std::min_element(set.ways.begin(), set.ways.end(), [](const dataCacheLine &a, const dataCacheLine &b) {
+            return a.lru_counter < b.lru_counter;
+        });
+
+        // Si se descarta una línea sucia en modo Write-Back -> programar escritura en L2
+        if (USEWBACK_L1_D && victim_it->dirty) {
+            pendingWriteL2 = true;
+            pending_addr = reconstructAddress(victim_it->tag, index);
+            pending_line = *victim_it;
         }
+
+        set.ways.erase(victim_it);
     }
 
     set.ways.push_back(newline);
 }
 
-void dataMem::startL2Request(sc_int<32> addr, bool isWrite, sc_int<32> writeData) {
-    if (!isWrite) {
-        addr_buf = addr;
-        addr_cacheL2.write(addr & ~(WORDSPERLINE_L2 * 4 - 1));
-        read_req_cacheL2.write(true);
-    } else {
-        addr_cacheL2.write((sc_uint<32>) addr);
-        data_cacheL2.write(writeData);
-        write_req_cacheL2.write(true);
-    }
+void dataMem::startL2RequestR(sc_int<32> addr) {
+    addr_buf = addr;
+    addr_cacheL2.write(addr & ~(WORDSPERLINE_L2 * 4 - 1));
+    read_req_cacheL2.write(true);
+    waitingL2 = true;
+}
+
+void dataMem::startL2RequestW(sc_int<32> addr, const dataCacheLine &writeLine) {
+    addr_cacheL2.write((sc_uint<32>) addr);
+    line_out.write(writeLine);
+    write_req_cacheL2.write(true);
     waitingL2 = true;
 }
 
 bool dataMem::isL2RequestCompleteR() {
     if (read_ready_cacheL2.read()) {
-        l2_line_buf = line_in.read();
         read_req_cacheL2.write(false);
-        storeLineToL1(addr_buf, l2_line_buf);
+        storeLineToL1(addr_buf, line_in.read());
         waitingL2 = false;
         if (PRINT) fprintf(fout1, "Dato recibido y almacenado en cache");
         
@@ -164,10 +183,15 @@ void dataMem::registro() {
     if (tiempo >= 188420)
         cout << "";
 
+    if (pendingWriteL2 && !waitingL2) {
+        startL2RequestW(pending_addr, pending_line);
+        pendingWriteL2 = false;
+    } 
+
     if (opCode < 15 && !accessCache(address, word, false, 0)) {
         // MISS -> encolamos y lanzamos refill si hace falta
         if (!waitingL2) {
-            startL2Request(address, false, 0);
+            startL2RequestR(address);
             if (PRINT) fprintf(fout1, "Fallo en cache, solicitando dato a cacheL2");
 
         } else if (isL2RequestCompleteR() || isL2RequestCompleteW()) {
@@ -178,22 +202,15 @@ void dataMem::registro() {
         INST.wReg = false;
         instOut.write(INST);
         return;
-    } else if (opCode > 8 && opCode < 15 && waitingL2){
-        // Esperando a que se complete la operacion en L2 previa para volver a escribir y potencialmente escribir en L2
-        isL2RequestCompleteR();
-        isL2RequestCompleteW();
-
-        INST.wReg = false;
-        instOut.write(INST);
-        return;
     } else if (opCode < 15) {
         // HIT -> Sacamos de la cola y procesamos el load o store
         pendingQueue.pop();
         updatePendingMask();
     }
 
-    if ((isL2RequestCompleteR() || isL2RequestCompleteW()) && PRINT)
-        fprintf(fout1, " y ");
+    if (waitingL2 && (isL2RequestCompleteR() || isL2RequestCompleteW())) {
+        if (PRINT) fprintf(fout1, " y ");
+    }
     
     switch (opCode) {
         // ----- Lecturas -----
@@ -255,12 +272,10 @@ void dataMem::registro() {
             break;
 
         default:
-            cerr << "Operaci�n de memoria desconocida: " << opCode << endl;
+            cerr << "Operación de memoria desconocida: " << opCode << endl;
             exit(-1);
     }    
 }
-
-
 
 sc_int<32> dataMem::decodeReadData(sc_uint<4> op, sc_int<32> word, int BH) {
     switch (op) {
@@ -279,8 +294,9 @@ sc_int<32> dataMem::decodeReadData(sc_uint<4> op, sc_int<32> word, int BH) {
     }
 }
 
-sc_uint<32> dataMem::getWord(const L2CacheLine &line, int idx) {
-    return sc_uint<32>(line.data.range((idx + 1) * 32 - 1, idx * 32).to_uint());
+sc_uint<32> dataMem::reconstructAddress(sc_uint<32> tag, sc_uint<32> index) {
+    // dirección base de la línea víctima
+    return (tag << (int(log2(WORDSPERLINE_L1_D)) + int(log2(NUMLINES_L1_D)))) | (index * WORDSPERLINE_L1_D * 4);
 }
 
 void dataMem::printPendings() {

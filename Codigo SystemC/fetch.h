@@ -61,7 +61,6 @@ private:
     void startL2Request(sc_uint<32> addr);
     bool isL2RequestComplete();
     void storeLineToL1();
-    sc_int<32> getWord(const L2CacheLine &line, int idx);
 };
 
 #endif

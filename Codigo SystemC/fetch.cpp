@@ -78,8 +78,13 @@ void fetch::storeLineToL1() {
     unsigned offset = ((addr_buf >> 2) & (WORDSPERLINE_L2 - 1)) / WORDSPERLINE_L1_I;
 
     std::vector<sc_uint<32>> lineaL1(WORDSPERLINE_L1_I);
-    for (unsigned i = 0; i < WORDSPERLINE_L1_I; ++i)
-        lineaL1[i] = getWord(l2_line_buf, offset * WORDSPERLINE_L1_I + i);
+    for (unsigned i = 0; i < WORDSPERLINE_L1_I; ++i) {
+        unsigned l2_idx = offset * WORDSPERLINE_L1_I + i;
+        if (l2_idx < WORDSPERLINE_L2)
+            lineaL1[i] = l2_line_buf.data[l2_idx];
+        else
+            lineaL1[i] = 0xDEADBEEF; // Relleno si el índice se sale del rango
+    }
 
     instCacheLine newline;
     newline.valid = true;
@@ -195,10 +200,6 @@ void fetch::registro() {
     }
     instOut.write(INST);
     fire.write(!fire.read());
-}
-
-sc_int<32> fetch::getWord(const L2CacheLine &line, int idx) {
-    return sc_int<32>(line.data.range((idx + 1) * 32 - 1, idx * 32).to_uint());
 }
 
 void fetch::end_of_simulation() {

@@ -69,7 +69,7 @@ void cacheL2::cacheL2_process() {
             for (auto &line: set.ways) {
                 if (line.valid && line.tag == tag) {
                     for (int i = 0; i < WORDSPERLINE_L2; ++i)
-                        setWord(buffer_out, i, getWord(line, i));
+                        buffer_out.data[i] = line.data[i];
 
                     buffer_out.valid = true;
                     buffer_out.tag = line.tag;
@@ -92,8 +92,8 @@ void cacheL2::cacheL2_process() {
                     sc_uint<32> currAddr = baseAddr + i * 4;
                     sc_int<32> word = MEM->isValidAddress(currAddr) ? MEM->readWord(currAddr) : 0x0000dead;
 
-                    setWord(newline, i, word);
-                    setWord(buffer_out, i, word);
+                    newline.data[i] = word;
+                    buffer_out.data[i] = word;
                 }
 
                 buffer_out.valid = true;
@@ -117,21 +117,25 @@ void cacheL2::cacheL2_process() {
             }
 
             pending_response = true;
-        } else if (client_pending == DATAMEM_W) {
+        }else if (client_pending == DATAMEM_W) {
             // --- BLOQUE DE ESCRITURA ---
-
-            sc_int<32> data = dataMem_data.read();
-            unsigned word_offset = (addr_buf >> 2) % WORDSPERLINE_L2;
+            dataCacheLine lineL1 = dataMem_data.read();
 
             sc_uint<32> index = (addr_buf >> 2) / WORDSPERLINE_L2 % NUMLINES_L2;
             sc_uint<32> tag = addr_buf >> (2 + int(log2(WORDSPERLINE_L2)) + int(log2(NUMLINES_L2)));
+            unsigned l2_offset = ((addr_buf >> 2) % WORDSPERLINE_L2) / WORDSPERLINE_L1_D;
+            unsigned l2_base = l2_offset * WORDSPERLINE_L1_D;
 
             L2CacheSet &set = cache[index];
 
             bool hit = false;
             for (auto &line: set.ways) {
                 if (line.valid && line.tag == tag) {
-                    setWord(line, word_offset, data);
+                    // Copiar la línea de L1 en la posición correspondiente de L2
+                    for (unsigned i = 0; i < WORDSPERLINE_L1_D; ++i) {
+                        if ((l2_base + i) < WORDSPERLINE_L2)
+                            line.data[l2_base + i] = lineL1.data[i];
+                    }
                     line.dirty = true;
                     updateLRU(set, line);
                     hit = true;
@@ -147,25 +151,31 @@ void cacheL2::cacheL2_process() {
                 newline.lru_counter = current_lru++;
 
                 for (unsigned i = 0; i < WORDSPERLINE_L2; ++i) {
-                    sc_uint<32> currAddr = (addr_buf & ~(WORDSPERLINE_L2 * 4 - 1)) + i * 4;
-                    sc_int<32> mem_word = MEM->readWord(currAddr);
-                    sc_int<32> word = (i == word_offset) ? data : (sc_int<32>) mem_word;
-
-                    setWord(newline, i, word);
+                    // Si corresponde al rango de la línea L1, copia el dato de L1, si no, lee de memoria
+                    if (i >= l2_base && i < l2_base + WORDSPERLINE_L1_D)
+                        newline.data[i] = lineL1.data[i - l2_base];
+                    else {
+                        sc_uint<32> currAddr = (addr_buf & ~(WORDSPERLINE_L2 * 4 - 1)) + i * 4;
+                        sc_int<32> mem_word = MEM->readWord(currAddr);
+                        newline.data[i] = mem_word;
+                    }
                 }
 
                 writeLine(addr_buf, newline);
                 latency_counter = LATENCY_CYCLES_L2 + LATENCY_CYCLES_MEM;
-                if (PRINT) 
+                if (PRINT)
                     fprintf(fout1, "Fallo en cache, esperando dato a cache y escritura a mem (%d clk) + mem (%d clk)", LATENCY_CYCLES_L2, LATENCY_CYCLES_MEM);
             } else {
                 latency_counter = LATENCY_CYCLES_L2;
                 if (PRINT) fprintf(fout1, "Acierto en cache, esperando escritura a mem (%d clk)", LATENCY_CYCLES_L2);
             }
-            //latency_counter = 1;
-            MEM->writeWord(addr_buf, data);// Write-through
-            pending_response = true;
 
+            // Escribir toda la línea L1 en memoria principal
+            for (unsigned i = 0; i < WORDSPERLINE_L1_D; ++i) {
+                if (MEM->isValidAddress(addr_buf + i * 4))
+                    MEM->writeWord(addr_buf + i * 4, lineL1.data[i]);
+            }
+            pending_response = true;
         }
     }
 
@@ -221,7 +231,7 @@ void cacheL2::writeLine(sc_uint<32> addr, const L2CacheLine &newline) {
 
             // Escribir cada palabra a memoria
             for (unsigned i = 0; i < WORDSPERLINE_L2; ++i) {
-                sc_int<32> word = getWord(victim, i);
+                sc_int<32> word = victim.data[i];
                 MEM->writeWord(base_addr + 4 * i, word);
             }
         }
@@ -252,7 +262,7 @@ void cacheL2::printCacheL2() {
                       << std::setw(6) << std::setfill('0') << line.tag << "  | ";
 
             for (unsigned i = 0; i < WORDSPERLINE_L2; ++i) {
-                sc_int<32> word = getWord(line, i);
+                sc_int<32> word = line.data[i];
                 std::cout << std::setw(8) << std::setfill('0') << word << " ";
             }
 
@@ -261,16 +271,6 @@ void cacheL2::printCacheL2() {
     }
 
     std::cout << "==================================================================================================================================\n\n";
-}
-
-
-
-sc_int<32> cacheL2::getWord(const L2CacheLine &line, int idx) {
-    return sc_int<32>(line.data.range((idx + 1) * 32 - 1, idx * 32).to_uint());
-}
-
-void cacheL2::setWord(L2CacheLine &line, int idx, sc_int<32> value) {
-    line.data.range((idx + 1) * 32 - 1, idx * 32) = value;
 }
 
 void cacheL2::updateLRU(L2CacheSet &set, L2CacheLine &accessedLine) {

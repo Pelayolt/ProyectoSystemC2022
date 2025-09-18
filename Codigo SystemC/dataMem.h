@@ -24,7 +24,7 @@ public:
     sc_in<bool> write_ready_cacheL2;
     sc_in<bool> read_ready_cacheL2;
     sc_in<L2CacheLine> line_in;
-    sc_out<sc_int<32>> data_cacheL2;
+    sc_out<dataCacheLine> line_out;
     sc_out<sc_uint<32>> addr_cacheL2;
     sc_out<bool> read_req_cacheL2;    
     sc_out<bool> write_req_cacheL2;
@@ -68,20 +68,22 @@ private:
     bool waitingL2 = false;
     bool pendingWriteL2 = false;
     sc_uint<32> addr_buf;
-    L2CacheLine l2_line_buf;
+    sc_int<32> pending_addr;
+    dataCacheLine pending_line;
+
     double tiempo;
 
     void initCache();
     void updatePendingMask();
     bool accessCache(sc_int<32> addr, sc_int<32> & word, bool isWrite, sc_int<32> writeData);
     void storeLineToL1(sc_uint<32> addr, const L2CacheLine &line);
-    void startL2Request(sc_int<32> addr, bool isWrite, sc_int<32> writeData);
+    void startL2RequestR(sc_int<32> addr);
+    void startL2RequestW(sc_int<32> addr, const dataCacheLine &writeLine);
     bool isL2RequestCompleteR();
     bool isL2RequestCompleteW();
     void addNewInst(instruction i);
-    void startL2Write(sc_uint<32> addr, sc_int<32> writeData);
     sc_int<32> decodeReadData(sc_uint<4> op, sc_int<32> word, int BH);
-    sc_uint<32> getWord(const L2CacheLine &line, int idx);
+    sc_uint<32> reconstructAddress(sc_uint<32> tag, sc_uint<32> index);
     void printPendings();
 
     };

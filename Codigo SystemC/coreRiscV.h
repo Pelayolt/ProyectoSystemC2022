@@ -91,7 +91,7 @@ public:
         instDataMem->read_ready_cacheL2(ready_L2_dataMem);
         instDataMem->addr_cacheL2(addr_L2_dataMem);
         instDataMem->line_in(line_L2_dataMem);
-        instDataMem->data_cacheL2(write_data);
+        instDataMem->line_out(write_data);
 
 		instFetch->instCacheL2 = instCacheL2;
         instCacheL2->MEM = MEM;
@@ -126,7 +126,7 @@ private:
 
     sc_signal<bool> write_req;
     sc_signal<bool> write_ready;
-    sc_signal<sc_int<32>> write_data;
+    sc_signal<dataCacheLine> write_data;
     sc_signal<sc_uint<32>> write_addr;
 
 	sc_signal<sc_uint<32>> Mask;

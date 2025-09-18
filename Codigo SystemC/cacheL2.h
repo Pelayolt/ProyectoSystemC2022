@@ -23,7 +23,7 @@ public:
     sc_in<bool> read_req;
     sc_in<bool> write_req;
     sc_in<sc_uint<32>> dataMem_addr;
-    sc_in<sc_int<32>> dataMem_data;
+    sc_in<dataCacheLine> dataMem_data;
     sc_out<bool> read_ready;
     sc_out<bool> write_ready;
     sc_out<L2CacheLine> dataMem_line_out;
@@ -49,8 +49,6 @@ private:
     void updateLRU(L2CacheSet & set, L2CacheLine & accessedLine);
     void cacheL2_process();
     void writeLine(sc_uint<32> addr, const L2CacheLine &newline);
-    void setWord(L2CacheLine & line, int idx, sc_int<32> value);
-    sc_int<32> getWord(const L2CacheLine &line, int idx);
     void printCacheL2();
 
     // Internas
