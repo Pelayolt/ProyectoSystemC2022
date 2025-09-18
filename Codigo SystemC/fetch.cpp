@@ -2,7 +2,7 @@
 #include <iostream>
 #include <iomanip>
 
-extern FILE *fout1;
+extern FILE *fout1, *fout3;
 
 
 SC_HAS_PROCESS(fetch);
@@ -166,7 +166,10 @@ void fetch::registro() {
                     PCout.write(PC);
                     ++numInst;
                     cache_hits++;
-                    if (PRINT) fprintf(fout1, "Instruccion 0x%08X encontrada", static_cast<unsigned int>(INST.I));
+                    if (PRINT) {
+                        fprintf(fout1, "Instruccion 0x%08X encontrada", static_cast<unsigned int>(INST.I));
+                        fprintf(fout3, "%.0f;0x%08X\n", tiempo, static_cast<unsigned int>(INST.I));
+                    }
                     PC = newPC;
                 } else {
                     cache_misses++;

@@ -1,14 +1,25 @@
-﻿  cacheL2.cpp
+﻿  decod.cpp
   Unknown compiler version - please run the configure tests and report the results
-C:\Users\pelay\UDC\TFG\ProyectoSystemC2022\Codigo SystemC\cacheL2.cpp(66,37): warning C4244: 'argumento': conversión de 'sc_dt::uint_type' a 'const unsigned int'; posible pérdida de datos
-C:\Users\pelay\UDC\TFG\ProyectoSystemC2022\Codigo SystemC\cacheL2.cpp(93,59): warning C4244: 'argumento': conversión de 'sc_dt::uint_type' a 'int'; posible pérdida de datos
-C:\Users\pelay\UDC\TFG\ProyectoSystemC2022\Codigo SystemC\cacheL2.cpp(93,85): warning C4244: 'argumento': conversión de 'sc_dt::uint_type' a 'int'; posible pérdida de datos
-C:\Users\pelay\UDC\TFG\ProyectoSystemC2022\Codigo SystemC\cacheL2.cpp(129,37): warning C4244: 'argumento': conversión de 'sc_dt::uint_type' a 'const unsigned int'; posible pérdida de datos
-C:\Users\pelay\UDC\TFG\ProyectoSystemC2022\Codigo SystemC\cacheL2.cpp(159,61): warning C4244: 'argumento': conversión de 'sc_dt::uint_type' a 'int'; posible pérdida de datos
-C:\Users\pelay\UDC\TFG\ProyectoSystemC2022\Codigo SystemC\cacheL2.cpp(175,50): warning C4244: 'argumento': conversión de 'sc_dt::uint_type' a 'int'; posible pérdida de datos
-C:\Users\pelay\UDC\TFG\ProyectoSystemC2022\Codigo SystemC\cacheL2.cpp(176,67): warning C4244: 'argumento': conversión de 'sc_dt::int_type' a 'int'; posible pérdida de datos
-C:\Users\pelay\UDC\TFG\ProyectoSystemC2022\Codigo SystemC\cacheL2.cpp(176,45): warning C4244: 'argumento': conversión de 'sc_dt::uint_type' a 'int'; posible pérdida de datos
-C:\Users\pelay\UDC\TFG\ProyectoSystemC2022\Codigo SystemC\cacheL2.cpp(212,29): warning C4244: 'argumento': conversión de 'sc_dt::uint_type' a 'const unsigned int'; posible pérdida de datos
-C:\Users\pelay\UDC\TFG\ProyectoSystemC2022\Codigo SystemC\cacheL2.cpp(235,51): warning C4244: 'argumento': conversión de 'sc_dt::int_type' a 'int'; posible pérdida de datos
-C:\Users\pelay\UDC\TFG\ProyectoSystemC2022\Codigo SystemC\cacheL2.cpp(235,42): warning C4244: 'argumento': conversión de 'sc_dt::uint_type' a 'int'; posible pérdida de datos
+C:\Users\pelay\UDC\TFG\ProyectoSystemC2022\Codigo SystemC\decod.cpp(18,15): warning C4244: 'inicializando': conversión de 'sc_dt::uint_type' a 'int'; posible pérdida de datos
+C:\Users\pelay\UDC\TFG\ProyectoSystemC2022\Codigo SystemC\decod.cpp(61,17): warning C4244: 'argumento': conversión de 'sc_dt::uint_type' a 'int'; posible pérdida de datos
+C:\Users\pelay\UDC\TFG\ProyectoSystemC2022\Codigo SystemC\decod.cpp(62,17): warning C4244: 'argumento': conversión de 'sc_dt::uint_type' a 'int'; posible pérdida de datos
+C:\Users\pelay\UDC\TFG\ProyectoSystemC2022\Codigo SystemC\decod.cpp(297,25): warning C4244: 'argumento': conversión de 'sc_dt::uint_type' a 'int'; posible pérdida de datos
+C:\Users\pelay\UDC\TFG\ProyectoSystemC2022\Codigo SystemC\decod.cpp(305,25): warning C4244: 'argumento': conversión de 'sc_dt::uint_type' a 'int'; posible pérdida de datos
+C:\Users\pelay\UDC\TFG\ProyectoSystemC2022\Codigo SystemC\decod.cpp(307,52): warning C4554: "|": compruebe la prioridad de operador para posibles errores; utilice paréntesis para indicar la prioridad
+C:\Users\pelay\UDC\TFG\ProyectoSystemC2022\Codigo SystemC\decod.cpp(308,50): warning C4554: "|": compruebe la prioridad de operador para posibles errores; utilice paréntesis para indicar la prioridad
+C:\Users\pelay\UDC\TFG\ProyectoSystemC2022\Codigo SystemC\decod.cpp(309,50): warning C4554: "|": compruebe la prioridad de operador para posibles errores; utilice paréntesis para indicar la prioridad
+  fetch.cpp
+  Unknown compiler version - please run the configure tests and report the results
+C:\Users\pelay\UDC\TFG\ProyectoSystemC2022\Codigo SystemC\fetch.cpp(95,27): warning C4244: 'argumento': conversión de 'sc_dt::uint_type' a 'const unsigned int'; posible pérdida de datos
+C:\Users\pelay\UDC\TFG\ProyectoSystemC2022\Codigo SystemC\fetch.cpp(117,27): warning C4244: 'argumento': conversión de 'sc_dt::uint_type' a 'const unsigned int'; posible pérdida de datos
+C:\Users\pelay\UDC\TFG\ProyectoSystemC2022\Codigo SystemC\fetch.cpp(121,30): warning C4244: 'argumento': conversión de 'sc_dt::uint_type' a 'const unsigned int'; posible pérdida de datos
+  mainRiscV_1.cpp
+  Unknown compiler version - please run the configure tests and report the results
+C:\Users\pelay\UDC\TFG\ProyectoSystemC2022\Codigo SystemC\mainRiscV_1.cpp(63,9): warning C4477: 'printf' : la cadena de formato '%ld' requiere un argumento de tipo 'long', pero el argumento variádico 1 tiene el tipo 'time_t'
+      C:\Users\pelay\UDC\TFG\ProyectoSystemC2022\Codigo SystemC\mainRiscV_1.cpp(63,9):
+      considere el uso de ' %lld' en la cadena de formato
+      C:\Users\pelay\UDC\TFG\ProyectoSystemC2022\Codigo SystemC\mainRiscV_1.cpp(63,9):
+      considere el uso de ' %I64d' en la cadena de formato
+  
+  Generando código...
   ProyectoSystemC2022.vcxproj -> C:\Users\pelay\UDC\TFG\ProyectoSystemC2022\Debug\ProyectoSystemC2022.exe
