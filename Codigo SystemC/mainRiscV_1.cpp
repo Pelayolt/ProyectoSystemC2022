@@ -4,7 +4,7 @@
 
 #include "coreRiscV.h"
 
-FILE *fout2;
+FILE *fout2, *fout3;
 
 int sc_main(int nargs, char *vargs[]) {
 
@@ -13,9 +13,15 @@ int sc_main(int nargs, char *vargs[]) {
     FILE *elf;
     time_t begin, end;
 
-    fout2 = fopen("..\\Excels\\Output_comparar.txt", "w");
+    fout2 = fopen("..\\Excels\\Output_comparar_datos.txt", "w");
     if (!fout2) {
-        perror("No se pudo abrir Output_comparar.txt");
+        perror("No se pudo abrir Output_comparar_datos.txt");
+        return 1;
+    }
+
+    fout3 = fopen("..\\Excels\\Output_comparar_instrucciones.txt", "w");
+    if (!fout3) {
+        perror("No se pudo abrir Output_comparar_instrucciones.txt");
         return 1;
     }
 
@@ -51,6 +57,7 @@ int sc_main(int nargs, char *vargs[]) {
     printf("Tiempo %ld\n", end - begin);
 
     fclose(fout2);
+    fclose(fout3);
 
     return 0;
 }

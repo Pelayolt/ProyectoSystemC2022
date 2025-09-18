@@ -1,5 +1,6 @@
 ﻿#include "fetch.h"
 
+extern FILE *fout3;
 
 void fetch::updatePC() {
 
@@ -18,7 +19,6 @@ void fetch::updatePC() {
 }
 
 void fetch::registro() {
-
     sc_uint<32> tmp;
 
     tmp = PCext.read();
@@ -41,7 +41,8 @@ void fetch::registro() {
                 INST.I = MEM->readWord(PC);
                 INST.address = PC;
                 PCout.write(PC);
-                ++numInst;
+                ++numInst; 
+                if (PRINT) fprintf(fout3, "0x%08X\n", static_cast<unsigned int>(INST.I));
             }
         }
         PC = newPC;
