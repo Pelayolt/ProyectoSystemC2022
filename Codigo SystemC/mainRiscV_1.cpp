@@ -1,10 +1,45 @@
 #include "systemc.h"
+#include "params.h"
 #include <stdio.h>
 #include <time.h>
 
 #include "coreRiscV.h"
 
-FILE *fout1, *fout2, *fout3;
+FILE *fout1, *fout2, *fout3, *fout4, *fout5, *fout6;
+int sharedFlag = 3;
+
+void openFiles() {
+    fout1 = fopen("..\\Excels\\Output_pipeline.txt", "w");
+    if (!fout1) {
+        perror("No se pudo abrir Output_pipeline.txt");
+        exit(1);
+    }
+    fout2 = fopen("..\\Excels\\Output_comparar_datos.txt", "w");
+    if (!fout2) {
+        perror("No se pudo abrir Output_comparar_datos.txt");
+        exit(1);
+    }
+    fout3 = fopen("..\\Excels\\Output_comparar_instrucciones.txt", "w");
+    if (!fout3) {
+        perror("No se pudo abrir Output_comparar_instrucciones.txt");
+        exit(1);
+    }
+    fout4 = fopen("..\\Excels\\Output_cache_datos.txt", "w");
+    if (!fout4) {
+        perror("No se pudo abrir Output_cache_datos.txt");
+        exit(1);
+    }
+    fout5 = fopen("..\\Excels\\Output_cache_instrucciones.txt", "w");
+    if (!fout5) {
+        perror("No se pudo abrir Output_cache_instrucciones.txt");
+        exit(1);
+    }
+    fout6 = fopen("..\\Excels\\Output_cache_L2.txt", "w");
+    if (!fout6) {
+        perror("No se pudo abrir Output_cache_L2.txt");
+        exit(1);
+    }
+}
 
 int sc_main(int nargs, char *vargs[]) {
 
@@ -13,23 +48,7 @@ int sc_main(int nargs, char *vargs[]) {
 	FILE* elf; 
 	time_t begin, end;	
 
-	fout1 = fopen("..\\Excels\\Output_pipeline.txt", "w");
-    if (!fout1) {
-        perror("No se pudo abrir Output_pipeline.txt");
-        return 1;
-    }
-
-	fout2 = fopen("..\\Excels\\Output_comparar_datos.txt", "w");
-    if (!fout2) {
-        perror("No se pudo abrir Output_comparar_datos.txt");
-        return 1;
-    }
-
-	fout3 = fopen("..\\Excels\\Output_comparar_instrucciones.txt", "w");
-    if (!fout2) {
-        perror("No se pudo abrir Output_comparar_instrucciones.txt");
-        return 1;
-    }
+	openFiles();
 	
 	if (nargs != 2) {
 		cerr << "ERROR. Se debe especificar el archivo ELF" << endl;
@@ -65,6 +84,9 @@ int sc_main(int nargs, char *vargs[]) {
     fclose(fout1);
     fclose(fout2);
     fclose(fout3);
+    fclose(fout4);
+    fclose(fout5);
+    fclose(fout6);
 
 	return 0;
 	   

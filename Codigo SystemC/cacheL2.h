@@ -65,5 +65,7 @@ private:
     sc_uint<32> w_addr;
     sc_int<32> w_data;
     unsigned w_offset;
+
+    double tiempo;
 };
 #endif

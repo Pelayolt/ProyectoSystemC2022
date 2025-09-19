@@ -61,6 +61,7 @@ private:
     void startL2Request(sc_uint<32> addr);
     bool isL2RequestComplete();
     void storeLineToL1();
+    void printCacheL1Instr();
 };
 
 #endif

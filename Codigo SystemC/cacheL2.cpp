@@ -3,6 +3,7 @@
 #include <iomanip>
 
 extern FILE *fout1;
+extern FILE *fout6;
 
 
 SC_HAS_PROCESS(cacheL2);
@@ -25,6 +26,8 @@ void cacheL2::initCacheL2() {
 }
 
 void cacheL2::cacheL2_process() {
+    tiempo = sc_time_stamp().to_double() / 1000.0;
+
     if (rst.read()) {
         latency_counter = LATENCY_CYCLES_L2;
         fetch_ready.write(false);
@@ -34,8 +37,12 @@ void cacheL2::cacheL2_process() {
         client_pending = NONE;
         notifying_to_dataMem = false;
         notifying_to_fetch = false;
+        sharedFlag = 3;
         return;
     }
+
+    if (PRINT && sharedFlag < 3) printCacheL2();
+
 
     fetch_ready.write(false);
     write_ready.write(false);
@@ -242,35 +249,42 @@ void cacheL2::writeLine(sc_uint<32> addr, const L2CacheLine &newline) {
 
     // Insertar nueva línea
     set.ways.push_back(newline);
-    //printCacheL2();
+    sharedFlag = 0;
 }
 
 void cacheL2::printCacheL2() {
-    std::cout << "\n============================================================ CACHE L2 ============================================================\n";
-    std::cout << " Index | Way |  Valid  |  Dirty |      Tag      |                                       Data\n";
-    std::cout << "----------------------------------------------------------------------------------------------------------------------------------\n";
+    // Cabecera CSV
+    fprintf(fout6, "%.0f\nIndex;Way;Valid;Dirty;Tag", tiempo);
+    for (unsigned i = 0; i < WORDSPERLINE_L2; ++i) {
+        fprintf(fout6, ";Data%u", i);
+    }
+    fprintf(fout6, "\n");
 
     for (unsigned index = 0; index < NUMLINES_L2; ++index) {
         const L2CacheSet &set = cache[index];
-        for (unsigned way = 0; way < set.ways.size(); ++way) {
-            const L2CacheLine &line = set.ways[way];
-
-            std::cout << std::hex << std::setw(6) << index << " | "
-                      << std::hex << std::setw(3) << way << " | "
-                      << "   " << line.valid << "    |   "
-                      << line.dirty << "    |  0x"
-                      << std::setw(6) << std::setfill('0') << line.tag << "  | ";
-
-            for (unsigned i = 0; i < WORDSPERLINE_L2; ++i) {
-                sc_int<32> word = line.data[i];
-                std::cout << std::setw(8) << std::setfill('0') << word << " ";
+        for (unsigned way = 0; way < ASSOCIATIVITY_L2; ++way) {
+            if (way < set.ways.size()) {
+                const L2CacheLine &line = set.ways[way];
+                fprintf(fout6, "%u;%u;%u;%u;0x%08X",
+                        index,
+                        way,
+                        line.valid ? 1 : 0,
+                        line.dirty ? 1 : 0,
+                        (unsigned int) line.tag);
+                for (unsigned i = 0; i < WORDSPERLINE_L2; ++i) {
+                    fprintf(fout6, ";0x%08X", (unsigned int) line.data[i]);
+                }
+            } else {
+                // Línea/vía no inicializada: imprime valores por defecto
+                fprintf(fout6, "%u;%u;0;0;0x00000000", index, way);
+                for (unsigned i = 0; i < WORDSPERLINE_L2; ++i) {
+                    fprintf(fout6, ";0xDEADBEEF");
+                }
             }
-
-            std::cout << std::dec << std::endl;
+            fprintf(fout6, "\n");
         }
     }
-
-    std::cout << "==================================================================================================================================\n\n";
+    sharedFlag++;
 }
 
 void cacheL2::updateLRU(L2CacheSet &set, L2CacheLine &accessedLine) {

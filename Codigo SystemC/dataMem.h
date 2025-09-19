@@ -85,6 +85,7 @@ private:
     sc_int<32> decodeReadData(sc_uint<4> op, sc_int<32> word, int BH);
     sc_uint<32> reconstructAddress(sc_uint<32> tag, sc_uint<32> index);
     void printPendings();
+    void printCacheL1Data();
 
     };
 

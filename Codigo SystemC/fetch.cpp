@@ -2,7 +2,7 @@
 #include <iostream>
 #include <iomanip>
 
-extern FILE *fout1, *fout3;
+extern FILE *fout1, *fout3, *fout5;
 
 
 SC_HAS_PROCESS(fetch);
@@ -107,6 +107,7 @@ void fetch::storeLineToL1() {
 
     set.ways.push_back(newline);
     state = IDLE;
+    sharedFlag = 0;
 }
 
 sc_uint<32> fetch::fetchFromCache(sc_uint<32> addr, bool &isHit) {
@@ -140,8 +141,11 @@ void fetch::registro() {
         numInst = 0;
         state = IDLE;
         reqToL2 = false;
+        sharedFlag = 3;
         return;
     }
+
+    if (PRINT && sharedFlag < 3) printCacheL1Instr();
 
     if (PRINT) fprintf(fout1, "0x%08X;CACHE INSTR;", static_cast<unsigned int>(PC));
 
@@ -203,6 +207,34 @@ void fetch::registro() {
     }
     instOut.write(INST);
     fire.write(!fire.read());
+}
+
+void fetch::printCacheL1Instr() {
+    // Cabecera CSV
+    fprintf(fout5, "%.0f\nIndex;Way;Valid;Tag", tiempo);
+    for (unsigned i = 0; i < WORDSPERLINE_L1_I; ++i) {
+        fprintf(fout5, ";Data%u", i);
+    }
+    fprintf(fout5, "\n");
+
+    for (unsigned index = 0; index < NUMLINES_L1_I; ++index) {
+        const CacheSet &set = cache[index];
+        for (unsigned way = 0; way < set.ways.size(); ++way) {
+            const instCacheLine &line = set.ways[way];
+
+            fprintf(fout5, "%u;%u;%u;0x%08X",
+                index,
+                way,
+                line.valid ? 1 : 0,
+                (unsigned int)line.tag);
+
+            for (unsigned i = 0; i < WORDSPERLINE_L1_I; ++i) {
+                fprintf(fout5, ";0x%08X", (unsigned int) line.data[i]);
+            }
+            fprintf(fout5, "\n");
+        }
+    }
+    sharedFlag++;
 }
 
 void fetch::end_of_simulation() {
