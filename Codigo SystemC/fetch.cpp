@@ -1,4 +1,5 @@
 ﻿#include "fetch.h"
+#include "coreRiscV.h"
 #include <iostream>
 #include <iomanip>
 
@@ -73,17 +74,21 @@ bool fetch::isL2RequestComplete() {
 }
 
 void fetch::storeLineToL1() {
-    sc_uint<32> index = (addr_buf >> 2) / WORDSPERLINE_L1_I % NUMLINES_L1_I;
-    sc_uint<32> tag = addr_buf >> (2 + int(log2(WORDSPERLINE_L1_I)) + int(log2(NUMLINES_L1_I)));
-    unsigned offset = ((addr_buf >> 2) & (WORDSPERLINE_L2 - 1)) / WORDSPERLINE_L1_I;
+    sc_uint<32> baseAddrL2 = addr_buf & ~(WORDSPERLINE_L2 * 4 - 1);
+    sc_uint<32> baseAddrL1 = addr_buf & ~(WORDSPERLINE_L1_I * 4 - 1);
+
+    sc_uint<32> index = (baseAddrL1 >> 2) / WORDSPERLINE_L1_I % NUMLINES_L1_I;
+    sc_uint<32> tag = baseAddrL1 >> (2 + int(log2(WORDSPERLINE_L1_I)) + int(log2(NUMLINES_L1_I)));
+
+    unsigned offset = (baseAddrL1 - baseAddrL2) / 4;
 
     std::vector<sc_uint<32>> lineaL1(WORDSPERLINE_L1_I);
     for (unsigned i = 0; i < WORDSPERLINE_L1_I; ++i) {
-        unsigned l2_idx = offset * WORDSPERLINE_L1_I + i;
+        unsigned l2_idx = offset + i;
         if (l2_idx < WORDSPERLINE_L2)
             lineaL1[i] = l2_line_buf.data[l2_idx];
         else
-            lineaL1[i] = 0xDEADBEEF; // Relleno si el índice se sale del rango
+            lineaL1[i] = 0xDEADBEEF;// Relleno si el índice se sale del rango
     }
 
     instCacheLine newline;
@@ -107,7 +112,7 @@ void fetch::storeLineToL1() {
 
     set.ways.push_back(newline);
     state = IDLE;
-    sharedFlag = 0;
+    instCore->printAll();
 }
 
 sc_uint<32> fetch::fetchFromCache(sc_uint<32> addr, bool &isHit) {
@@ -141,11 +146,8 @@ void fetch::registro() {
         numInst = 0;
         state = IDLE;
         reqToL2 = false;
-        sharedFlag = 3;
         return;
     }
-
-    if (PRINT && sharedFlag < 3) printCacheL1Instr();
 
     if (PRINT) fprintf(fout1, "0x%08X;CACHE INSTR;", static_cast<unsigned int>(PC));
 
@@ -211,7 +213,11 @@ void fetch::registro() {
 
 void fetch::printCacheL1Instr() {
     // Cabecera CSV
-    fprintf(fout5, "%.0f\nIndex;Way;Valid;Tag", tiempo);
+    fprintf(fout5, "CACHE INSTRUCCIONES");
+    for (int i = 0; i < WORDSPERLINE_L1_I + 2; i++)
+        fprintf(fout5, ";");
+    fprintf(fout5, "CICLO;%.0f\nIndex;Way;Valid;Tag", sc_time_stamp().to_double() / 1000.0);
+
     for (unsigned i = 0; i < WORDSPERLINE_L1_I; ++i) {
         fprintf(fout5, ";Data%u", i);
     }
@@ -234,7 +240,6 @@ void fetch::printCacheL1Instr() {
             fprintf(fout5, "\n");
         }
     }
-    sharedFlag++;
 }
 
 void fetch::end_of_simulation() {

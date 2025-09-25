@@ -20,9 +20,8 @@
 #define WORDSPERLINE_L2 8
 #define ASSOCIATIVITY_L2 1
 #define USEFIFO_L2 true
+#define USEWBACK_L2 false		// false = write-through, true = write-back
 #define LATENCY_CYCLES_L2 2
 #define LATENCY_CYCLES_MEM 3
-
-extern int sharedFlag;
 
 #endif

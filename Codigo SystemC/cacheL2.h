@@ -9,7 +9,7 @@
 #include <deque>
 #include <vector>
 
-
+class coreRiscV;
 
 SC_MODULE(cacheL2) {
 public:
@@ -29,11 +29,14 @@ public:
     sc_out<L2CacheLine> dataMem_line_out;
     
     mem *MEM;
+    coreRiscV *instCore;
+
     sc_module *backing_memory;
 
     SC_CTOR(cacheL2);
 
     void initCacheL2();
+    void printCacheL2();
 
 private:
     struct L2CacheSet {
@@ -49,7 +52,6 @@ private:
     void updateLRU(L2CacheSet & set, L2CacheLine & accessedLine);
     void cacheL2_process();
     void writeLine(sc_uint<32> addr, const L2CacheLine &newline);
-    void printCacheL2();
 
     // Internas
     int latency_counter = 0;

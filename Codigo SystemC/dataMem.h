@@ -13,6 +13,8 @@
 #include <queue>
 #include <bitset>
 
+class coreRiscV;
+
 SC_MODULE(dataMem) {
 public:
     sc_in<bool> clk, rst;
@@ -32,8 +34,11 @@ public:
 
     // Acceso a memoria directa (solo para Debug)
     mem *MEM;
+    coreRiscV *instCore;
+
 
     void registro();
+    void printCacheL1Data();
 
     SC_CTOR(dataMem) {
         std::cout << "dataMem: " << name() << std::endl;
@@ -85,7 +90,6 @@ private:
     sc_int<32> decodeReadData(sc_uint<4> op, sc_int<32> word, int BH);
     sc_uint<32> reconstructAddress(sc_uint<32> tag, sc_uint<32> index);
     void printPendings();
-    void printCacheL1Data();
 
     };
 

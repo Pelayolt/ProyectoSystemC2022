@@ -1,4 +1,6 @@
 #include "cacheL2.h"
+#include "coreRiscV.h"
+
 #include <algorithm>
 #include <iomanip>
 
@@ -37,12 +39,8 @@ void cacheL2::cacheL2_process() {
         client_pending = NONE;
         notifying_to_dataMem = false;
         notifying_to_fetch = false;
-        sharedFlag = 3;
         return;
     }
-
-    if (PRINT && sharedFlag < 3) printCacheL2();
-
 
     fetch_ready.write(false);
     write_ready.write(false);
@@ -128,20 +126,25 @@ void cacheL2::cacheL2_process() {
             // --- BLOQUE DE ESCRITURA ---
             dataCacheLine lineL1 = dataMem_data.read();
 
-            sc_uint<32> index = (addr_buf >> 2) / WORDSPERLINE_L2 % NUMLINES_L2;
-            sc_uint<32> tag = addr_buf >> (2 + int(log2(WORDSPERLINE_L2)) + int(log2(NUMLINES_L2)));
-            unsigned l2_offset = ((addr_buf >> 2) % WORDSPERLINE_L2) / WORDSPERLINE_L1_D;
-            unsigned l2_base = l2_offset * WORDSPERLINE_L1_D;
+            // Dirección base de la línea de L2
+            sc_uint<32> baseAddrL2 = addr_buf & ~(WORDSPERLINE_L2 * 4 - 1);
+
+            sc_uint<32> index = (baseAddrL2 >> 2) / WORDSPERLINE_L2 % NUMLINES_L2;
+            sc_uint<32> tag = baseAddrL2 >> (2 + int(log2(WORDSPERLINE_L2)) + int(log2(NUMLINES_L2)));
+
+            // Offset de la línea de L1 dentro de la línea de L2
+            unsigned l2_offset = ((addr_buf & ~(WORDSPERLINE_L1_D * 4 - 1)) - baseAddrL2) / 4;
 
             L2CacheSet &set = cache[index];
-
             bool hit = false;
+
             for (auto &line: set.ways) {
                 if (line.valid && line.tag == tag) {
-                    // Copiar la línea de L1 en la posición correspondiente de L2
+                    // Copiar toda la línea de L1 en la posición correcta dentro de L2
                     for (unsigned i = 0; i < WORDSPERLINE_L1_D; ++i) {
-                        if ((l2_base + i) < WORDSPERLINE_L2)
-                            line.data[l2_base + i] = lineL1.data[i];
+                        if (l2_offset + i < WORDSPERLINE_L2) {
+                            line.data[l2_offset + i] = lineL1.data[i];
+                        }
                     }
                     line.dirty = true;
                     updateLRU(set, line);
@@ -159,14 +162,15 @@ void cacheL2::cacheL2_process() {
 
                 for (unsigned i = 0; i < WORDSPERLINE_L2; ++i) {
                     // Si corresponde al rango de la línea L1, copia el dato de L1, si no, lee de memoria
-                    if (i >= l2_base && i < l2_base + WORDSPERLINE_L1_D)
-                        newline.data[i] = lineL1.data[i - l2_base];
+                    if (i >= l2_offset && i < l2_offset + WORDSPERLINE_L1_D)
+                        newline.data[i] = lineL1.data[i - l2_offset];
                     else {
                         sc_uint<32> currAddr = (addr_buf & ~(WORDSPERLINE_L2 * 4 - 1)) + i * 4;
                         sc_int<32> mem_word = MEM->readWord(currAddr);
                         newline.data[i] = mem_word;
                     }
                 }
+                newline.dirty = USEWBACK_L2;
 
                 writeLine(addr_buf, newline);
                 latency_counter = LATENCY_CYCLES_L2 + LATENCY_CYCLES_MEM;
@@ -249,12 +253,15 @@ void cacheL2::writeLine(sc_uint<32> addr, const L2CacheLine &newline) {
 
     // Insertar nueva línea
     set.ways.push_back(newline);
-    sharedFlag = 0;
+    instCore->printAll();
 }
 
 void cacheL2::printCacheL2() {
     // Cabecera CSV
-    fprintf(fout6, "%.0f\nIndex;Way;Valid;Dirty;Tag", tiempo);
+    fprintf(fout6, "CACHE L2");
+    for (int i = 0; i < WORDSPERLINE_L2+3; i++)
+        fprintf(fout6, ";");    
+    fprintf(fout6, "CICLO;%.0f\nIndex;Way;Valid;Dirty;Tag", sc_time_stamp().to_double() / 1000.0);
     for (unsigned i = 0; i < WORDSPERLINE_L2; ++i) {
         fprintf(fout6, ";Data%u", i);
     }
@@ -284,7 +291,6 @@ void cacheL2::printCacheL2() {
             fprintf(fout6, "\n");
         }
     }
-    sharedFlag++;
 }
 
 void cacheL2::updateLRU(L2CacheSet &set, L2CacheLine &accessedLine) {

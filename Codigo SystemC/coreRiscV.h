@@ -93,12 +93,21 @@ public:
         instDataMem->line_in(line_L2_dataMem);
         instDataMem->line_out(write_data);
 
-		instFetch->instCacheL2 = instCacheL2;
+		//instFetch->instCacheL2 = instCacheL2;
         instCacheL2->MEM = MEM;
 		
 		instDataMem->MEM = MEM;
 		instDecod->numInst = &(instFetch->numInst);
 
+		instDataMem->instCore = this;
+		instFetch->instCore = this;
+		instCacheL2->instCore = this;
+	}
+
+	void printAll() {
+        instFetch->printCacheL1Instr();
+        instDataMem->printCacheL1Data();
+        instCacheL2->printCacheL2();
 	}
 
 private:

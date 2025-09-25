@@ -1,12 +1,13 @@
 #ifndef FETCH_H
 #define FETCH_H
 
-#include "cacheL2.h"
 #include "params.h"
 #include "systemc.h"
 #include "structsRV.h"
 #include <deque>
 #include <vector>
+
+class coreRiscV;
 
 SC_MODULE(fetch) {
 public:
@@ -21,7 +22,7 @@ public:
     sc_out<sc_uint<32>> addr_cacheL2;
     sc_out<bool> req_cacheL2;
 
-    cacheL2 *instCacheL2;
+    coreRiscV *instCore;
 
     void registro();
     void updatePC();
@@ -34,6 +35,7 @@ public:
     unsigned int numInst;
     unsigned cache_hits = 0;
     unsigned cache_misses = 0;
+    void printCacheL1Instr();
 
 private:
     sc_uint<32> PC, newPC;
@@ -61,7 +63,6 @@ private:
     void startL2Request(sc_uint<32> addr);
     bool isL2RequestComplete();
     void storeLineToL1();
-    void printCacheL1Instr();
 };
 
 #endif

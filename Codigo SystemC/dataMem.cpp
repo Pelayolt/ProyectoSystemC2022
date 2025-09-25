@@ -1,4 +1,5 @@
 ﻿#include"dataMem.h"
+#include "coreRiscV.h"
 #include <iomanip>
 
 extern FILE *fout1, *fout2, *fout4;
@@ -54,7 +55,8 @@ bool dataMem::accessCache(sc_int<32> addr, sc_int<32> &word, bool isWrite, sc_in
                     pending_addr = addr;
                     pending_line = line; 
                 }
-                sharedFlag = 0;
+                instCore->printAll();
+
             } else {
                 word = line.data[offset];
             }
@@ -67,34 +69,40 @@ bool dataMem::accessCache(sc_int<32> addr, sc_int<32> &word, bool isWrite, sc_in
 }
 
 void dataMem::storeLineToL1(sc_uint<32> addr, const L2CacheLine &lineL2) {
-    sc_uint<32> index = (addr >> 2) / WORDSPERLINE_L1_D % NUMLINES_L1_D;
-    sc_uint<32> tag = addr >> (2 + int(log2(WORDSPERLINE_L1_D)) + int(log2(NUMLINES_L1_D)));
-    unsigned offset = ((addr >> 2) & (WORDSPERLINE_L2 - 1)) / WORDSPERLINE_L1_D;
-    unsigned l2_base = offset * WORDSPERLINE_L1_D;
+    // Direcciones base alineadas
+    sc_uint<32> baseAddrL2 = addr & ~(WORDSPERLINE_L2 * 4 - 1);
+    sc_uint<32> baseAddrL1 = addr & ~(WORDSPERLINE_L1_D * 4 - 1);
+
+    // Índice y tag para L1
+    sc_uint<32> index = (baseAddrL1 >> 2) / WORDSPERLINE_L1_D % NUMLINES_L1_D;
+    sc_uint<32> tag = baseAddrL1 >> (2 + int(log2(WORDSPERLINE_L1_D)) + int(log2(NUMLINES_L1_D)));
+
+    // Offset de la línea L1 dentro de la línea L2
+    unsigned offset = (baseAddrL1 - baseAddrL2) / 4;
 
     dataCacheLine newline;
     newline.valid = true;
     newline.tag = tag;
     newline.lru_counter = current_lru++;
-    newline.dirty = false;      // recién cargada desde L2 -> no sucia todavía
+    newline.dirty = false;// recién cargada desde L2 → no sucia
 
-    // Copiar desde L2 a la nueva línea, comprobando rango
+    // Copiar desde L2 a L1
     for (unsigned i = 0; i < WORDSPERLINE_L1_D; ++i) {
-        unsigned l2_idx = l2_base + i;
+        unsigned l2_idx = offset + i;
         if (l2_idx < WORDSPERLINE_L2)
             newline.data[i] = lineL2.data[l2_idx];
         else
-            newline.data[i] = 0xDEADBEEF; // Relleno si el índice se sale del rango
+            newline.data[i] = 0xDEADBEEF;
     }
 
+    // Reemplazo FIFO o LRU
     CacheSet &set = cache[index];
     if (set.ways.size() >= ASSOCIATIVITY_L1_D) {
-        // Buscar víctima según FIFO o LRU
         auto victim_it = USEFIFO_L1_D ? set.ways.begin() : std::min_element(set.ways.begin(), set.ways.end(), [](const dataCacheLine &a, const dataCacheLine &b) {
             return a.lru_counter < b.lru_counter;
         });
 
-        // Si se descarta una línea sucia en modo Write-Back -> programar escritura en L2
+        // Si la víctima es sucia y usamos Write-Back, hay que escribirla en L2
         if (USEWBACK_L1_D && victim_it->dirty) {
             pendingWriteL2 = true;
             pending_addr = reconstructAddress(victim_it->tag, index);
@@ -103,9 +111,11 @@ void dataMem::storeLineToL1(sc_uint<32> addr, const L2CacheLine &lineL2) {
 
         set.ways.erase(victim_it);
     }
+
     set.ways.push_back(newline);
-    sharedFlag = 0;
+    instCore->printAll();
 }
+
 
 void dataMem::startL2RequestR(sc_int<32> addr) {
     addr_buf = addr;
@@ -153,10 +163,8 @@ void dataMem::registro() {
         waitingL2 = false;
         while (!pendingQueue.empty()) pendingQueue.pop();
         updatePendingMask();
-        sharedFlag = 3;
         return;
     }
-    if (PRINT && sharedFlag < 3) printCacheL1Data();
 
     instruction nextInst = I.read();
     bool serveQueue = !pendingQueue.empty() && (nextInst.memOp < 15 || !nextInst.wReg || nextInst.I == 0x00000013);
@@ -182,7 +190,7 @@ void dataMem::registro() {
     sc_uint<4> opCode = INST.memOp;
     sc_int<32> word;
 
-    if (tiempo >= 188420)
+    if (tiempo >= 530)
         cout << "";
 
     if (pendingWriteL2 && !waitingL2) {
@@ -319,7 +327,10 @@ void dataMem::printPendings() {
 
 void dataMem::printCacheL1Data() {
     // Cabecera CSV
-    fprintf(fout4, "%.0f\nIndex;Way;Valid;Dirty;Tag", tiempo);
+    fprintf(fout4, "CACHE DATOS");
+    for (int i = 0; i < WORDSPERLINE_L1_D + 3; i++)
+        fprintf(fout4, ";");
+    fprintf(fout4, "CICLO;%.0f\nIndex;Way;Valid;Dirty;Tag", sc_time_stamp().to_double() / 1000.0);
     for (unsigned i = 0; i < WORDSPERLINE_L1_D; ++i) {
         fprintf(fout4, ";Data%u", i);
     }
@@ -350,5 +361,4 @@ void dataMem::printCacheL1Data() {
             fprintf(fout4, "\n");
         }
     }
-    sharedFlag++;
 }
