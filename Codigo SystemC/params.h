@@ -16,8 +16,8 @@
 #define MAX_SIZE_QUEUE 2		// El tamaño mínimo de la cola debe de ser 2 para poder manejar el pipeline
 
 // Parámetros de configuración de la caché L2
-#define NUMLINES_L2 16
-#define WORDSPERLINE_L2 4
+#define NUMLINES_L2 32
+#define WORDSPERLINE_L2 8
 #define ASSOCIATIVITY_L2 1
 #define USEFIFO_L2 true
 #define LATENCY_CYCLES_L2 2

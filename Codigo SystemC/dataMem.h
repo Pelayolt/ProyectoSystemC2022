@@ -13,6 +13,8 @@
 #include <queue>
 #include <bitset>
 
+class coreRiscV;
+
 SC_MODULE(dataMem) {
 public:
     sc_in<bool> clk, rst;
@@ -30,10 +32,12 @@ public:
     sc_out<bool> write_req_cacheL2;
 
 
+    coreRiscV *instCore;
     // Acceso a memoria directa (solo para Debug)
     mem *MEM;
 
     void registro();
+    void printCacheL1Data();
 
     SC_CTOR(dataMem) {
         std::cout << "dataMem: " << name() << std::endl;

@@ -1,7 +1,8 @@
 #include"dataMem.h"
+#include "coreRiscV.h"
 #include <iomanip>
 
-extern FILE *fout1, *fout2;
+extern FILE *fout1, *fout2, *fout4;
 
 void dataMem::initCache() {
     cache.resize(NUMLINES_L1_D);
@@ -42,6 +43,7 @@ bool dataMem::accessCache(sc_int<32> addr, sc_int<32> &word, bool isWrite, sc_in
         if (line.valid && line.tag == tag) {
             if (isWrite) {
                 line.data[offset] = writeData;
+                instCore->printAll();
 
                 // WRITE-THROUGH: escribir también en L2
                 startL2Request(addr, true, writeData);
@@ -86,6 +88,7 @@ void dataMem::storeLineToL1(sc_uint<32> addr, const L2CacheLine &lineL2) {
     }
 
     set.ways.push_back(newline);
+    instCore->printAll();
 }
 
 void dataMem::startL2Request(sc_int<32> addr, bool isWrite, sc_int<32> writeData) {
@@ -281,6 +284,44 @@ sc_int<32> dataMem::decodeReadData(sc_uint<4> op, sc_int<32> word, int BH) {
 
 sc_uint<32> dataMem::getWord(const L2CacheLine &line, int idx) {
     return sc_uint<32>(line.data.range((idx + 1) * 32 - 1, idx * 32).to_uint());
+}
+
+void dataMem::printCacheL1Data() {
+    // Cabecera CSV
+    fprintf(fout4, "CACHE DATOS");
+    for (int i = 0; i < WORDSPERLINE_L1_D + 3; i++)
+        fprintf(fout4, ";");
+    fprintf(fout4, "CICLO;%.0f\nIndex;Way;Valid;Dirty;Tag", sc_time_stamp().to_double() / 1000.0);
+    for (unsigned i = 0; i < WORDSPERLINE_L1_D; ++i) {
+        fprintf(fout4, ";Data%u", i);
+    }
+    fprintf(fout4, "\n");
+
+    for (unsigned index = 0; index < NUMLINES_L1_D; ++index) {
+        const CacheSet &set = cache[index];
+        for (unsigned way = 0; way < ASSOCIATIVITY_L1_D; ++way) {
+            // Si la vía existe, imprime su contenido; si no, imprime valores por defecto
+            if (way < set.ways.size()) {
+                const dataCacheLine &line = set.ways[way];
+                fprintf(fout4, "%u;%u;%u;%u;0x%08X",
+                        index,
+                        way,
+                        line.valid ? 1 : 0,
+                        line.dirty ? 1 : 0,
+                        (unsigned int) line.tag);
+                for (unsigned i = 0; i < WORDSPERLINE_L1_D; ++i) {
+                    fprintf(fout4, ";0x%08X", (unsigned int) line.data[i]);
+                }
+            } else {
+                // Línea/vía no inicializada: imprime valores por defecto
+                fprintf(fout4, "%u;%u;0;0;0x00000000", index, way);
+                for (unsigned i = 0; i < WORDSPERLINE_L1_D; ++i) {
+                    fprintf(fout4, ";0xDEADBEEF");
+                }
+            }
+            fprintf(fout4, "\n");
+        }
+    }
 }
 
 void dataMem::printPendings() {

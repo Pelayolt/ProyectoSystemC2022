@@ -8,6 +8,8 @@
 #include <deque>
 #include <vector>
 
+class coreRiscV;
+
 SC_MODULE(fetch) {
 public:
     sc_in<bool> clk, rst;
@@ -21,10 +23,13 @@ public:
     sc_out<sc_uint<32>> addr_cacheL2;
     sc_out<bool> req_cacheL2;
 
+    coreRiscV *instCore;
     cacheL2 *instCacheL2;
 
     void registro();
     void updatePC();
+    void printCacheL1Instr();
+
     void initPC(int initVal) { PC = initVal; }
     virtual void end_of_simulation();
 

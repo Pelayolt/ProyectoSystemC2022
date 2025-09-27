@@ -4,7 +4,7 @@
 
 #include "coreRiscV.h"
 
-FILE *fout1, *fout2;
+FILE *fout1, *fout2, *fout4, *fout5, *fout6;
 
 int sc_main(int nargs, char *vargs[]) {
 
@@ -22,6 +22,22 @@ int sc_main(int nargs, char *vargs[]) {
 	fout2 = fopen("..\\Excels\\Output_comparar.txt", "w");
     if (!fout2) {
         perror("No se pudo abrir Output_comparar.txt");
+        return 1;
+    }
+	fout4 = fopen("..\\Excels\\Output_cache_datos.txt", "w");
+    if (!fout4) {
+        perror("No se pudo abrir Output_cache_datos.txt");
+        return 1;
+    }
+
+	fout5 = fopen("..\\Excels\\Output_cache_instrucciones.txt", "w");
+    if (!fout5) {
+        perror("No se pudo abrir Output_cache_instrucciones.txt");
+        return 1;
+    }
+	fout6 = fopen("..\\Excels\\Output_cache_L2.txt", "w");
+    if (!fout6) {
+        perror("No se pudo abrir Output_cache_L2.txt");
         return 1;
     }
 	
@@ -58,6 +74,9 @@ int sc_main(int nargs, char *vargs[]) {
 
     fclose(fout1);
     fclose(fout2);
+    fclose(fout4);
+    fclose(fout5);
+    fclose(fout6);
 
 	return 0;
 	   

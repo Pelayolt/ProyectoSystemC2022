@@ -1,8 +1,9 @@
 ﻿#include "fetch.h"
+#include "coreRiscV.h"
 #include <iostream>
 #include <iomanip>
 
-extern FILE *fout1;
+extern FILE *fout1, *fout5;
 
 
 SC_HAS_PROCESS(fetch);
@@ -102,6 +103,7 @@ void fetch::storeLineToL1() {
 
     set.ways.push_back(newline);
     state = IDLE;
+    instCore->printAll();
 }
 
 sc_uint<32> fetch::fetchFromCache(sc_uint<32> addr, bool &isHit) {
@@ -199,6 +201,37 @@ void fetch::registro() {
 
 sc_int<32> fetch::getWord(const L2CacheLine &line, int idx) {
     return sc_int<32>(line.data.range((idx + 1) * 32 - 1, idx * 32).to_uint());
+}
+
+void fetch::printCacheL1Instr() {
+    // Cabecera CSV
+    fprintf(fout5, "CACHE INSTRUCCIONES");
+    for (int i = 0; i < WORDSPERLINE_L1_I + 2; i++)
+        fprintf(fout5, ";");
+    fprintf(fout5, "CICLO;%.0f\nIndex;Way;Valid;Tag", sc_time_stamp().to_double() / 1000.0);
+
+    for (unsigned i = 0; i < WORDSPERLINE_L1_I; ++i) {
+        fprintf(fout5, ";Data%u", i);
+    }
+    fprintf(fout5, "\n");
+
+    for (unsigned index = 0; index < NUMLINES_L1_I; ++index) {
+        const CacheSet &set = cache[index];
+        for (unsigned way = 0; way < set.ways.size(); ++way) {
+            const instCacheLine &line = set.ways[way];
+
+            fprintf(fout5, "%u;%u;%u;0x%08X",
+                    index,
+                    way,
+                    line.valid ? 1 : 0,
+                    (unsigned int) line.tag);
+
+            for (unsigned i = 0; i < WORDSPERLINE_L1_I; ++i) {
+                fprintf(fout5, ";0x%08X", (unsigned int) line.data[i]);
+            }
+            fprintf(fout5, "\n");
+        }
+    }
 }
 
 void fetch::end_of_simulation() {

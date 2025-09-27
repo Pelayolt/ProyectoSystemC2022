@@ -99,10 +99,19 @@ public:
 		instDataMem->MEM = MEM;
 		instDecod->numInst = &(instFetch->numInst);
 
+		instCacheL2->instCore = this;
+        instDataMem->instCore = this;
+        instFetch->instCore = this;
 	}
 
-private:
+	void printAll() {
+        instFetch->printCacheL1Instr();
+        instDataMem->printCacheL1Data();
+        instCacheL2->printCacheL2();
+    }
 
+private:
+    
 	fetch* instFetch;
 	decod* instDecod;
 	alu* instAlu;
