@@ -38,7 +38,7 @@ public:
 
 
     void registro();
-    void printCacheL1Data();
+    void printCacheL1Data(int d);
 
     SC_CTOR(dataMem) {
         std::cout << "dataMem: " << name() << std::endl;

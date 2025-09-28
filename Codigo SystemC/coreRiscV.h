@@ -104,10 +104,10 @@ public:
 		instCacheL2->instCore = this;
 	}
 
-	void printAll() {
-        instFetch->printCacheL1Instr();
-        instDataMem->printCacheL1Data();
-        instCacheL2->printCacheL2();
+	void printAll(int i, int d, int l) {
+        instFetch->printCacheL1Instr(i);
+        instDataMem->printCacheL1Data(d);
+        instCacheL2->printCacheL2(l);
 	}
 
 private:

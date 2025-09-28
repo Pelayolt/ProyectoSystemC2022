@@ -1,4 +1,4 @@
-#include "cacheL2.h"
+ï»¿#include "cacheL2.h"
 #include "coreRiscV.h"
 
 #include <algorithm>
@@ -47,6 +47,9 @@ void cacheL2::cacheL2_process() {
     read_ready.write(false);
 
     if (PRINT) fprintf(fout1, ";CACHE L2;");
+
+    if (tiempo >= 306865)
+        cout << "";
 
     if (!pending_response) {
         if (write_req.read() && !notifying_to_dataMem) {
@@ -122,38 +125,39 @@ void cacheL2::cacheL2_process() {
             }
 
             pending_response = true;
-        }else if (client_pending == DATAMEM_W) {
+        } else if (client_pending == DATAMEM_W) {
             // --- BLOQUE DE ESCRITURA ---
             dataCacheLine lineL1 = dataMem_data.read();
 
-            // Dirección base de la línea de L2
+            // DirecciÃ³n base de la lÃ­nea de L2
             sc_uint<32> baseAddrL2 = addr_buf & ~(WORDSPERLINE_L2 * 4 - 1);
 
+            // Index y tag de L2
             sc_uint<32> index = (baseAddrL2 >> 2) / WORDSPERLINE_L2 % NUMLINES_L2;
             sc_uint<32> tag = baseAddrL2 >> (2 + int(log2(WORDSPERLINE_L2)) + int(log2(NUMLINES_L2)));
 
-            // Offset de la línea de L1 dentro de la línea de L2
-            unsigned l2_offset = ((addr_buf & ~(WORDSPERLINE_L1_D * 4 - 1)) - baseAddrL2) / 4;
+            // Offset donde empieza la lÃ­nea L1 dentro de la lÃ­nea de L2
+            sc_uint<32> baseAddrL1 = addr_buf & ~(WORDSPERLINE_L1_D * 4 - 1);
+            unsigned l2_offset = (baseAddrL1 - baseAddrL2) / 4;
 
             L2CacheSet &set = cache[index];
             bool hit = false;
 
+            // --- HIT en L2 ---
             for (auto &line: set.ways) {
                 if (line.valid && line.tag == tag) {
-                    // Copiar toda la línea de L1 en la posición correcta dentro de L2
                     for (unsigned i = 0; i < WORDSPERLINE_L1_D; ++i) {
-                        if (l2_offset + i < WORDSPERLINE_L2) {
+                        if (l2_offset + i < WORDSPERLINE_L2)
                             line.data[l2_offset + i] = lineL1.data[i];
-                        }
                     }
-                    line.dirty = true;
+                    line.dirty = USEWBACK_L2;// solo se marca sucia si usamos write-back
                     updateLRU(set, line);
                     hit = true;
                     break;
                 }
             }
 
-            // Miss: política write-allocate
+            // --- MISS: write-allocate ---
             if (!hit) {
                 L2CacheLine newline;
                 newline.valid = true;
@@ -161,33 +165,34 @@ void cacheL2::cacheL2_process() {
                 newline.lru_counter = current_lru++;
 
                 for (unsigned i = 0; i < WORDSPERLINE_L2; ++i) {
-                    // Si corresponde al rango de la línea L1, copia el dato de L1, si no, lee de memoria
-                    if (i >= l2_offset && i < l2_offset + WORDSPERLINE_L1_D)
+                    sc_uint<32> currAddr = baseAddrL2 + i * 4;
+                    if (i >= l2_offset && i < l2_offset + WORDSPERLINE_L1_D) {
                         newline.data[i] = lineL1.data[i - l2_offset];
-                    else {
-                        sc_uint<32> currAddr = (addr_buf & ~(WORDSPERLINE_L2 * 4 - 1)) + i * 4;
-                        sc_int<32> mem_word = MEM->readWord(currAddr);
-                        newline.data[i] = mem_word;
+                    } else {
+                        newline.data[i] = MEM->isValidAddress(currAddr) ? MEM->readWord(currAddr) : 0x0000dead;
                     }
                 }
                 newline.dirty = USEWBACK_L2;
 
                 writeLine(addr_buf, newline);
                 latency_counter = LATENCY_CYCLES_L2 + LATENCY_CYCLES_MEM;
-                if (PRINT)
-                    fprintf(fout1, "Fallo en cache, esperando dato a cache y escritura a mem (%d clk) + mem (%d clk)", LATENCY_CYCLES_L2, LATENCY_CYCLES_MEM);
+                if (PRINT) fprintf(fout1, "MISS en L2, cargar y escribir (%d + %d ciclos)", LATENCY_CYCLES_L2, LATENCY_CYCLES_MEM);
             } else {
                 latency_counter = LATENCY_CYCLES_L2;
-                if (PRINT) fprintf(fout1, "Acierto en cache, esperando escritura a mem (%d clk)", LATENCY_CYCLES_L2);
+                if (PRINT) fprintf(fout1, "HIT en L2, escribir (%d ciclos)", LATENCY_CYCLES_L2);
             }
 
-            // Escribir toda la línea L1 en memoria principal
-            for (unsigned i = 0; i < WORDSPERLINE_L1_D; ++i) {
-                if (MEM->isValidAddress(addr_buf + i * 4))
-                    MEM->writeWord(addr_buf + i * 4, lineL1.data[i]);
+            // --- PolÃ­tica write-through a memoria principal ---
+            if (!USEWBACK_L2) {
+                for (unsigned i = 0; i < WORDSPERLINE_L1_D; ++i) {
+                    if (MEM->isValidAddress(baseAddrL1 + i * 4))
+                        MEM->writeWord(baseAddrL1 + i * 4, lineL1.data[i]);
+                }
             }
+
             pending_response = true;
         }
+
     }
 
     notifying_to_dataMem = false;
@@ -233,7 +238,7 @@ void cacheL2::writeLine(sc_uint<32> addr, const L2CacheLine &newline) {
         L2CacheLine &victim = *it;
 
         if (victim.dirty) {
-            // Calcular dirección base de la línea víctima
+            // Calcular direcciÃ³n base de la lÃ­nea vÃ­ctima
             sc_uint<32> victim_tag = victim.tag;
             sc_uint<32> base_addr =
                     (victim_tag << (int(log2(WORDSPERLINE_L2)) + int(log2(NUMLINES_L2)))) |
@@ -247,21 +252,21 @@ void cacheL2::writeLine(sc_uint<32> addr, const L2CacheLine &newline) {
             }
         }
 
-        // Eliminar línea víctima
+        // Eliminar lÃ­nea vÃ­ctima
         set.ways.erase(it);
     }
 
-    // Insertar nueva línea
+    // Insertar nueva lÃ­nea
     set.ways.push_back(newline);
-    instCore->printAll();
+    instCore->printAll(0,0,1);
 }
 
-void cacheL2::printCacheL2() {
+void cacheL2::printCacheL2(int l) {
     // Cabecera CSV
     fprintf(fout6, "CACHE L2");
-    for (int i = 0; i < WORDSPERLINE_L2+3; i++)
+    for (int i = 0; i < WORDSPERLINE_L2+2; i++)
         fprintf(fout6, ";");    
-    fprintf(fout6, "CICLO;%.0f\nIndex;Way;Valid;Dirty;Tag", sc_time_stamp().to_double() / 1000.0);
+    fprintf(fout6, "%d;CICLO;%.0f\nIndex;Way;Valid;Dirty;Tag", l, sc_time_stamp().to_double() / 1000.0);
     for (unsigned i = 0; i < WORDSPERLINE_L2; ++i) {
         fprintf(fout6, ";Data%u", i);
     }
@@ -282,7 +287,7 @@ void cacheL2::printCacheL2() {
                     fprintf(fout6, ";0x%08X", (unsigned int) line.data[i]);
                 }
             } else {
-                // Línea/vía no inicializada: imprime valores por defecto
+                // LÃ­nea/vÃ­a no inicializada: imprime valores por defecto
                 fprintf(fout6, "%u;%u;0;0;0x00000000", index, way);
                 for (unsigned i = 0; i < WORDSPERLINE_L2; ++i) {
                     fprintf(fout6, ";0xDEADBEEF");

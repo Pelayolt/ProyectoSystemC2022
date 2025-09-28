@@ -35,7 +35,7 @@ public:
     unsigned int numInst;
     unsigned cache_hits = 0;
     unsigned cache_misses = 0;
-    void printCacheL1Instr();
+    void printCacheL1Instr(int i);
 
 private:
     sc_uint<32> PC, newPC;

@@ -112,7 +112,7 @@ void fetch::storeLineToL1() {
 
     set.ways.push_back(newline);
     state = IDLE;
-    instCore->printAll();
+    instCore->printAll(1, 0, 0);
 }
 
 sc_uint<32> fetch::fetchFromCache(sc_uint<32> addr, bool &isHit) {
@@ -211,12 +211,12 @@ void fetch::registro() {
     fire.write(!fire.read());
 }
 
-void fetch::printCacheL1Instr() {
+void fetch::printCacheL1Instr(int i) {
     // Cabecera CSV
     fprintf(fout5, "CACHE INSTRUCCIONES");
-    for (int i = 0; i < WORDSPERLINE_L1_I + 2; i++)
+    for (int i = 0; i < WORDSPERLINE_L1_I + 1; i++)
         fprintf(fout5, ";");
-    fprintf(fout5, "CICLO;%.0f\nIndex;Way;Valid;Tag", sc_time_stamp().to_double() / 1000.0);
+    fprintf(fout5, "%d;CICLO;%.0f\nIndex;Way;Valid;Tag", i, sc_time_stamp().to_double() / 1000.0);
 
     for (unsigned i = 0; i < WORDSPERLINE_L1_I; ++i) {
         fprintf(fout5, ";Data%u", i);

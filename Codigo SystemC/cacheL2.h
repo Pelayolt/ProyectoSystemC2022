@@ -36,7 +36,7 @@ public:
     SC_CTOR(cacheL2);
 
     void initCacheL2();
-    void printCacheL2();
+    void printCacheL2(int l);
 
 private:
     struct L2CacheSet {

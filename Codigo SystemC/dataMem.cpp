@@ -55,7 +55,7 @@ bool dataMem::accessCache(sc_int<32> addr, sc_int<32> &word, bool isWrite, sc_in
                     pending_addr = addr;
                     pending_line = line; 
                 }
-                instCore->printAll();
+                instCore->printAll(0,1,0);
 
             } else {
                 word = line.data[offset];
@@ -113,7 +113,7 @@ void dataMem::storeLineToL1(sc_uint<32> addr, const L2CacheLine &lineL2) {
     }
 
     set.ways.push_back(newline);
-    instCore->printAll();
+    instCore->printAll(0,1,0);
 }
 
 
@@ -125,7 +125,7 @@ void dataMem::startL2RequestR(sc_int<32> addr) {
 }
 
 void dataMem::startL2RequestW(sc_int<32> addr, const dataCacheLine &writeLine) {
-    addr_cacheL2.write((sc_uint<32>) addr);
+    addr_cacheL2.write((sc_uint<32>) addr & ~(WORDSPERLINE_L2 * 4 - 1));
     line_out.write(writeLine);
     write_req_cacheL2.write(true);
     waitingL2 = true;
@@ -190,7 +190,7 @@ void dataMem::registro() {
     sc_uint<4> opCode = INST.memOp;
     sc_int<32> word;
 
-    if (tiempo >= 530)
+    if (tiempo >= 400000)
         cout << "";
 
     if (pendingWriteL2 && !waitingL2) {
@@ -325,12 +325,12 @@ void dataMem::printPendings() {
     fprintf(fout1, ";");
 }
 
-void dataMem::printCacheL1Data() {
+void dataMem::printCacheL1Data(int d) {
     // Cabecera CSV
     fprintf(fout4, "CACHE DATOS");
-    for (int i = 0; i < WORDSPERLINE_L1_D + 3; i++)
+    for (int i = 0; i < WORDSPERLINE_L1_D + 2; i++)
         fprintf(fout4, ";");
-    fprintf(fout4, "CICLO;%.0f\nIndex;Way;Valid;Dirty;Tag", sc_time_stamp().to_double() / 1000.0);
+    fprintf(fout4, "%d;CICLO;%.0f\nIndex;Way;Valid;Dirty;Tag", d, sc_time_stamp().to_double() / 1000.0);
     for (unsigned i = 0; i < WORDSPERLINE_L1_D; ++i) {
         fprintf(fout4, ";Data%u", i);
     }
