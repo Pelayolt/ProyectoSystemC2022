@@ -31,6 +31,7 @@ void dataMem::updatePendingMask() {
             mask.set(p.rd);
         tmp.pop();
     }
+    
     pendingRdMask.write(mask.to_ulong());
     queueAvailableSpace.write(MAX_SIZE_QUEUE - pendingQueue.size());
 }
@@ -51,11 +52,12 @@ bool dataMem::accessCache(sc_int<32> addr, sc_int<32> &word, bool isWrite, sc_in
                     line.dirty = true;
                 } else {
                     // WRITE-THROUGH: escribir en L2 en el siguiente ciclo
+                    if (pendingWriteL2) cout << "WARNING: pendingWriteL2 already true when trying to write back dirty line to L2" << endl;
                     pendingWriteL2 = true;
                     pending_addr = addr;
                     pending_line = line; 
                 }
-                instCore->printAll(0,1,0);
+                if (PRINT)  instCore->printAll(0,1,0);
 
             } else {
                 word = line.data[offset];
@@ -84,7 +86,7 @@ void dataMem::storeLineToL1(sc_uint<32> addr, const L2CacheLine &lineL2) {
     newline.valid = true;
     newline.tag = tag;
     newline.lru_counter = current_lru++;
-    newline.dirty = false;// recién cargada desde L2 → no sucia
+    newline.dirty = false;// recién cargada desde L2, no sucia
 
     // Copiar desde L2 a L1
     for (unsigned i = 0; i < WORDSPERLINE_L1_D; ++i) {
@@ -102,10 +104,18 @@ void dataMem::storeLineToL1(sc_uint<32> addr, const L2CacheLine &lineL2) {
             return a.lru_counter < b.lru_counter;
         });
 
-        // Si la víctima es sucia y usamos Write-Back, hay que escribirla en L2
         if (USEWBACK_L1_D && victim_it->dirty) {
+            sc_uint<32> victim_tag = victim_it->tag;
+            sc_uint<32> victim_index = (baseAddrL1 >> 2) / WORDSPERLINE_L1_D % NUMLINES_L1_D;
+
+            sc_uint<32> base_addr =
+                    (victim_tag << (int(log2(WORDSPERLINE_L1_D)) + int(log2(NUMLINES_L1_D)))) |
+                    (victim_index << int(log2(WORDSPERLINE_L1_D)));
+            base_addr <<= 2;
+
+            if (pendingWriteL2) cout << "WARNING: pendingWriteL2 already true when trying to write back dirty line to L2" << endl;
             pendingWriteL2 = true;
-            pending_addr = reconstructAddress(victim_it->tag, index);
+            pending_addr = base_addr;
             pending_line = *victim_it;
         }
 
@@ -113,21 +123,22 @@ void dataMem::storeLineToL1(sc_uint<32> addr, const L2CacheLine &lineL2) {
     }
 
     set.ways.push_back(newline);
-    instCore->printAll(0,1,0);
+    if (PRINT) instCore->printAll(0, 1, 0);
 }
-
 
 void dataMem::startL2RequestR(sc_int<32> addr) {
     addr_buf = addr;
-    addr_cacheL2.write(addr & ~(WORDSPERLINE_L2 * 4 - 1));
+    addr_cacheL2.write((sc_uint<32>) addr);
     read_req_cacheL2.write(true);
+    if (waitingL2) cout << "WARNING: starting L2 read request while another L2 request is pending" << endl;
     waitingL2 = true;
 }
 
 void dataMem::startL2RequestW(sc_int<32> addr, const dataCacheLine &writeLine) {
-    addr_cacheL2.write((sc_uint<32>) addr & ~(WORDSPERLINE_L2 * 4 - 1));
+    addr_cacheL2.write((sc_uint<32>) addr);
     line_out.write(writeLine);
     write_req_cacheL2.write(true);
+    if (waitingL2) cout << "WARNING: starting L2 write request while another L2 request is pending" << endl;
     waitingL2 = true;
 }
 
@@ -190,7 +201,7 @@ void dataMem::registro() {
     sc_uint<4> opCode = INST.memOp;
     sc_int<32> word;
 
-    if (tiempo >= 400000)
+    if (tiempo >= 51762)
         cout << "";
 
     if (pendingWriteL2 && !waitingL2) {
@@ -302,11 +313,6 @@ sc_int<32> dataMem::decodeReadData(sc_uint<4> op, sc_int<32> word, int BH) {
         default:
             return 0;
     }
-}
-
-sc_uint<32> dataMem::reconstructAddress(sc_uint<32> tag, sc_uint<32> index) {
-    // dirección base de la línea víctima
-    return (tag << (int(log2(WORDSPERLINE_L1_D)) + int(log2(NUMLINES_L1_D)))) | (index * WORDSPERLINE_L1_D * 4);
 }
 
 void dataMem::printPendings() {

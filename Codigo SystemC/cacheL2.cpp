@@ -67,9 +67,10 @@ void cacheL2::cacheL2_process() {
 
         if (client_pending == FETCH || client_pending == DATAMEM_R) {
             // --- BLOQUE DE LECTURA ---
+            sc_uint<32> baseAddrL2 = addr_buf & ~(WORDSPERLINE_L2 * 4 - 1);
 
-            sc_uint<32> index = (addr_buf >> 2) / WORDSPERLINE_L2 % NUMLINES_L2;
-            sc_uint<32> tag = addr_buf >> (2 + int(log2(WORDSPERLINE_L2)) + int(log2(NUMLINES_L2)));
+            sc_uint<32> index = (baseAddrL2 >> 2) / WORDSPERLINE_L2 % NUMLINES_L2;
+            sc_uint<32> tag = baseAddrL2 >> (2 + int(log2(WORDSPERLINE_L2)) + int(log2(NUMLINES_L2)));
 
             L2CacheSet &set = cache[index];
             bool hit = false;
@@ -90,14 +91,13 @@ void cacheL2::cacheL2_process() {
             }
 
             if (!hit) {
-                sc_uint<32> baseAddr = addr_buf & ~(WORDSPERLINE_L2 * 4 - 1);
                 L2CacheLine newline;
                 newline.valid = true;
                 newline.tag = tag;
                 newline.lru_counter = current_lru++;
 
                 for (unsigned i = 0; i < WORDSPERLINE_L2; ++i) {
-                    sc_uint<32> currAddr = baseAddr + i * 4;
+                    sc_uint<32> currAddr = baseAddrL2 + i * 4;
                     sc_int<32> word = MEM->isValidAddress(currAddr) ? MEM->readWord(currAddr) : 0x0000dead;
 
                     newline.data[i] = word;
@@ -128,19 +128,18 @@ void cacheL2::cacheL2_process() {
         } else if (client_pending == DATAMEM_W) {
             // --- BLOQUE DE ESCRITURA ---
             dataCacheLine lineL1 = dataMem_data.read();
-
-            // Dirección base de la línea de L2
             sc_uint<32> baseAddrL2 = addr_buf & ~(WORDSPERLINE_L2 * 4 - 1);
+            sc_uint<32> baseAddrL1 = addr_buf & ~(WORDSPERLINE_L1_D * 4 - 1);
 
             // Index y tag de L2
             sc_uint<32> index = (baseAddrL2 >> 2) / WORDSPERLINE_L2 % NUMLINES_L2;
             sc_uint<32> tag = baseAddrL2 >> (2 + int(log2(WORDSPERLINE_L2)) + int(log2(NUMLINES_L2)));
 
             // Offset donde empieza la línea L1 dentro de la línea de L2
-            sc_uint<32> baseAddrL1 = addr_buf & ~(WORDSPERLINE_L1_D * 4 - 1);
             unsigned l2_offset = (baseAddrL1 - baseAddrL2) / 4;
 
             L2CacheSet &set = cache[index];
+            L2CacheLine *targetLine = nullptr;
             bool hit = false;
 
             // --- HIT en L2 ---
@@ -150,8 +149,9 @@ void cacheL2::cacheL2_process() {
                         if (l2_offset + i < WORDSPERLINE_L2)
                             line.data[l2_offset + i] = lineL1.data[i];
                     }
-                    line.dirty = USEWBACK_L2;// solo se marca sucia si usamos write-back
+                    line.dirty = USEWBACK_L2;
                     updateLRU(set, line);
+                    targetLine = &line;
                     hit = true;
                     break;
                 }
@@ -175,6 +175,7 @@ void cacheL2::cacheL2_process() {
                 newline.dirty = USEWBACK_L2;
 
                 writeLine(addr_buf, newline);
+                targetLine = &cache[index].ways.back();
                 latency_counter = LATENCY_CYCLES_L2 + LATENCY_CYCLES_MEM;
                 if (PRINT) fprintf(fout1, "MISS en L2, cargar y escribir (%d + %d ciclos)", LATENCY_CYCLES_L2, LATENCY_CYCLES_MEM);
             } else {
@@ -183,10 +184,10 @@ void cacheL2::cacheL2_process() {
             }
 
             // --- Política write-through a memoria principal ---
-            if (!USEWBACK_L2) {
-                for (unsigned i = 0; i < WORDSPERLINE_L1_D; ++i) {
-                    if (MEM->isValidAddress(baseAddrL1 + i * 4))
-                        MEM->writeWord(baseAddrL1 + i * 4, lineL1.data[i]);
+            if (!USEWBACK_L2 && targetLine) {
+                for (unsigned i = 0; i < WORDSPERLINE_L2; ++i) {
+                    sc_uint<32> currAddr = baseAddrL2 + i * 4;
+                    if (MEM->isValidAddress(currAddr)) MEM->writeWord(currAddr, targetLine->data[i]);
                 }
             }
 
@@ -237,7 +238,7 @@ void cacheL2::writeLine(sc_uint<32> addr, const L2CacheLine &newline) {
 
         L2CacheLine &victim = *it;
 
-        if (victim.dirty) {
+        if (USEWBACK_L2 && victim.dirty) {
             // Calcular dirección base de la línea víctima
             sc_uint<32> victim_tag = victim.tag;
             sc_uint<32> base_addr =
@@ -258,7 +259,7 @@ void cacheL2::writeLine(sc_uint<32> addr, const L2CacheLine &newline) {
 
     // Insertar nueva línea
     set.ways.push_back(newline);
-    instCore->printAll(0,0,1);
+    if (PRINT) instCore->printAll(0, 0, 1);
 }
 
 void cacheL2::printCacheL2(int l) {

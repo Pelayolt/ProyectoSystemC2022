@@ -112,7 +112,7 @@ void fetch::storeLineToL1() {
 
     set.ways.push_back(newline);
     state = IDLE;
-    instCore->printAll(1, 0, 0);
+    if (PRINT) instCore->printAll(1, 0, 0);
 }
 
 sc_uint<32> fetch::fetchFromCache(sc_uint<32> addr, bool &isHit) {
