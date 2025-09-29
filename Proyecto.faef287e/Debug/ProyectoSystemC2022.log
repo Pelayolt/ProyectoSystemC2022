@@ -1,18 +1,15 @@
-﻿  cacheL2.cpp
+﻿  mainRiscV_1.cpp
   Unknown compiler version - please run the configure tests and report the results
 C:\Users\pelay\UDC\TFG\ProyectoSystemC2022\Codigo SystemC\coreRiscV.h(14,1): warning C4099: 'coreRiscV': nombre de tipo visto anteriormente usando 'class' ahora se ve usando 'struct'
-  (compilando archivo de origen "Codigo%20SystemC/cacheL2.cpp")
+  (compilando archivo de origen "Codigo%20SystemC/mainRiscV_1.cpp")
       C:\Users\pelay\UDC\TFG\ProyectoSystemC2022\Codigo SystemC\coreRiscV.h(14,1):
       vea la declaración de 'coreRiscV'
   
-C:\Users\pelay\UDC\TFG\ProyectoSystemC2022\Codigo SystemC\cacheL2.cpp(71,37): warning C4244: 'argumento': conversión de 'sc_dt::uint_type' a 'const unsigned int'; posible pérdida de datos
-C:\Users\pelay\UDC\TFG\ProyectoSystemC2022\Codigo SystemC\cacheL2.cpp(98,59): warning C4244: 'argumento': conversión de 'sc_dt::uint_type' a 'int'; posible pérdida de datos
-C:\Users\pelay\UDC\TFG\ProyectoSystemC2022\Codigo SystemC\cacheL2.cpp(98,85): warning C4244: 'argumento': conversión de 'sc_dt::uint_type' a 'int'; posible pérdida de datos
-C:\Users\pelay\UDC\TFG\ProyectoSystemC2022\Codigo SystemC\cacheL2.cpp(134,37): warning C4244: 'argumento': conversión de 'sc_dt::uint_type' a 'const unsigned int'; posible pérdida de datos
-C:\Users\pelay\UDC\TFG\ProyectoSystemC2022\Codigo SystemC\cacheL2.cpp(156,57): warning C4244: 'argumento': conversión de 'sc_dt::uint_type' a 'int'; posible pérdida de datos
-C:\Users\pelay\UDC\TFG\ProyectoSystemC2022\Codigo SystemC\cacheL2.cpp(171,38): warning C4244: 'argumento': conversión de 'sc_dt::int_type' a 'int'; posible pérdida de datos
-C:\Users\pelay\UDC\TFG\ProyectoSystemC2022\Codigo SystemC\cacheL2.cpp(171,28): warning C4244: 'argumento': conversión de 'sc_dt::uint_type' a 'int'; posible pérdida de datos
-C:\Users\pelay\UDC\TFG\ProyectoSystemC2022\Codigo SystemC\cacheL2.cpp(207,29): warning C4244: 'argumento': conversión de 'sc_dt::uint_type' a 'const unsigned int'; posible pérdida de datos
-C:\Users\pelay\UDC\TFG\ProyectoSystemC2022\Codigo SystemC\cacheL2.cpp(230,51): warning C4244: 'argumento': conversión de 'sc_dt::int_type' a 'int'; posible pérdida de datos
-C:\Users\pelay\UDC\TFG\ProyectoSystemC2022\Codigo SystemC\cacheL2.cpp(230,42): warning C4244: 'argumento': conversión de 'sc_dt::uint_type' a 'int'; posible pérdida de datos
+C:\Users\pelay\UDC\TFG\ProyectoSystemC2022\Codigo SystemC\mainRiscV_1.cpp(73,9): warning C4477: 'printf' : la cadena de formato '%ld' requiere un argumento de tipo 'long', pero el argumento variádico 1 tiene el tipo 'time_t'
+      C:\Users\pelay\UDC\TFG\ProyectoSystemC2022\Codigo SystemC\mainRiscV_1.cpp(73,9):
+      considere el uso de ' %lld' en la cadena de formato
+      C:\Users\pelay\UDC\TFG\ProyectoSystemC2022\Codigo SystemC\mainRiscV_1.cpp(73,9):
+      considere el uso de ' %I64d' en la cadena de formato
+  
+  LINK : no se encontró C:\Users\pelay\UDC\TFG\ProyectoSystemC2022\Debug\ProyectoSystemC2022.exe o no lo generó el último vínculo incremental; ejecutando vínculo completo
   ProyectoSystemC2022.vcxproj -> C:\Users\pelay\UDC\TFG\ProyectoSystemC2022\Debug\ProyectoSystemC2022.exe

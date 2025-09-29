@@ -19,25 +19,25 @@ int sc_main(int nargs, char *vargs[]) {
         return 1;
     }
 
-	fout2 = fopen("..\\Excels\\Output_comparar.txt", "w");
+	fout2 = fopen("..\\Excels\\Output_comparar_ok.txt", "w");
     if (!fout2) {
-        perror("No se pudo abrir Output_comparar.txt");
+        perror("No se pudo abrir Output_comparar_ok.txt");
         return 1;
     }
-	fout4 = fopen("..\\Excels\\Output_cache_datos.txt", "w");
+	fout4 = fopen("..\\Excels\\Output_cache_datos_ok.txt", "w");
     if (!fout4) {
-        perror("No se pudo abrir Output_cache_datos.txt");
+        perror("No se pudo abrir Output_cache_datos_ok.txt");
         return 1;
     }
 
-	fout5 = fopen("..\\Excels\\Output_cache_instrucciones.txt", "w");
+	fout5 = fopen("..\\Excels\\Output_cache_instrucciones_ok.txt", "w");
     if (!fout5) {
-        perror("No se pudo abrir Output_cache_instrucciones.txt");
+        perror("No se pudo abrir Output_cache_instrucciones_ok.txt");
         return 1;
     }
-	fout6 = fopen("..\\Excels\\Output_cache_L2.txt", "w");
+	fout6 = fopen("..\\Excels\\Output_cache_L2_ok.txt", "w");
     if (!fout6) {
-        perror("No se pudo abrir Output_cache_L2.txt");
+        perror("No se pudo abrir Output_cache_L2_ok.txt");
         return 1;
     }
 	
