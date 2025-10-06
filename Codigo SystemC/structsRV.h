@@ -4,7 +4,7 @@
 #include "systemc.h"
 #include "params.h"
 #include <string>
-#define PRINT true
+#define PRINT false
 
 using namespace std;
 
@@ -107,6 +107,11 @@ inline std::ostream &operator<<(std::ostream &os, const dataCacheLine &line) {
     os << "], lru: " << std::dec << line.lru_counter << " }";
     return os;
 }
+
+struct dataPendingWrite {
+    sc_int<32> address;
+    dataCacheLine line;
+};
 
 struct L2CacheLine {
 public:

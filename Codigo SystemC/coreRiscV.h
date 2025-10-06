@@ -98,6 +98,7 @@ public:
 		
 		instDataMem->MEM = MEM;
 		instDecod->numInst = &(instFetch->numInst);
+        instCacheL2->numInst = &(instFetch->numInst);
 
 		instDataMem->instCore = this;
 		instFetch->instCore = this;

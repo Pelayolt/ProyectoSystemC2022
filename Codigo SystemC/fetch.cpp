@@ -3,8 +3,7 @@
 #include <iostream>
 #include <iomanip>
 
-extern FILE *fout1, *fout3, *fout5;
-
+extern FILE *fout1, *fout3, *fout5, *fout7;
 
 SC_HAS_PROCESS(fetch);
 
@@ -182,7 +181,6 @@ void fetch::registro() {
                     INST.I = 0x00000013;
                     INST.address = PC;
                     PCout.write(PC);
-                    ++numInst;
                     startL2Request(PC);
                     if (PRINT) fprintf(fout1, "Fallo en cache, solicitando instruccion a cacheL2");
                 }
@@ -201,7 +199,6 @@ void fetch::registro() {
             INST.I = 0x00000013;
             INST.address = PC;
             PCout.write(PC);
-            ++numInst;
 
             break;
         }
@@ -243,15 +240,30 @@ void fetch::printCacheL1Instr(int i) {
 }
 
 void fetch::end_of_simulation() {
-    std::cout << "\n=== Estadisticas de cacheL1I ===\n";
-    std::cout << "Vias: " << dec << ASSOCIATIVITY_L1_I << std::endl;
-    std::cout << "Number of lines: " << dec << NUMLINES_L1_I << std::endl;
-    std::cout << "Words per line: " << dec << WORDSPERLINE_L1_I << std::endl;
-    if (USEFIFO_L1_I)
-        std::cout << "Used FIFO" << std::endl;
-    else
-        std::cout << "Used LRU" << std::endl;
-    std::cout << "Hits:   " << dec << cache_hits << std::endl;
-    std::cout << "Misses: " << dec << cache_misses << std::endl;
-    std::cout << "Tasa de acierto: " << dec << 100.0 * cache_hits / (cache_hits + cache_misses) << "%\n";
+    fprintf(fout7,
+            "Tipo de cache;Asociatividad;Lineas;Palabras por linea;"
+            "Politica reemplazo;Politica_escritura;Tamano maximo cola;Hits;Misses;Tasa acierto(%%)\n");
+
+    const char *reemplazo = USEFIFO_L1_I ? "FIFO" : "LRU";
+
+    double tasa_acierto = 0.0;
+    if (cache_hits + cache_misses > 0) {
+        tasa_acierto = 100.0 * cache_hits / (cache_hits + cache_misses);
+    }
+    char buffer[50];
+    sprintf(buffer, "%.2f", tasa_acierto);
+    for (int i = 0; buffer[i]; i++) {
+        if (buffer[i] == '.') {
+            buffer[i] = ',';
+        }
+    }
+
+    fprintf(fout7, "Instrucciones;%u;%u;%u;%s;;;%u;%u;%s\n",
+            ASSOCIATIVITY_L1_I,
+            NUMLINES_L1_I,
+            WORDSPERLINE_L1_I,
+            reemplazo,
+            cache_hits,
+            cache_misses,
+            buffer);
 }

@@ -4,9 +4,7 @@
 #include <algorithm>
 #include <iomanip>
 
-extern FILE *fout1;
-extern FILE *fout6;
-
+extern FILE *fout1, *fout6, *fout7;
 
 SC_HAS_PROCESS(cacheL2);
 
@@ -17,7 +15,7 @@ cacheL2::cacheL2(sc_module_name name) : sc_module(name) {
     sensitive << clk.pos();
     dont_initialize();
 
-    latency_counter = LATENCY_CYCLES_L2;
+    latency_counter = 0;
 }
 
 void cacheL2::initCacheL2() {
@@ -27,11 +25,51 @@ void cacheL2::initCacheL2() {
     }
 }
 
+void cacheL2::writeLine(sc_uint<32> addr, const L2CacheLine &newline) {
+    sc_uint<32> index = (addr >> 2) / WORDSPERLINE_L2 % NUMLINES_L2;
+    L2CacheSet &set = cache[index];
+
+    // Reemplazo si es necesario
+    if (set.ways.size() >= ASSOCIATIVITY_L2) {
+        auto it = USEFIFO_L2 ? set.ways.begin()
+                             : std::min_element(set.ways.begin(), set.ways.end(),
+                                                [](const L2CacheLine &a, const L2CacheLine &b) {
+                                                    return a.lru_counter < b.lru_counter;
+                                                });
+
+        L2CacheLine &victim = *it;
+
+        if (USEWBACK_L2 && victim.dirty) {
+            // Calcular dirección base de la línea víctima
+            sc_uint<32> victim_tag = victim.tag;
+            sc_uint<32> base_addr =
+                    (victim_tag << (int(log2(WORDSPERLINE_L2)) + int(log2(NUMLINES_L2)))) |
+                    (index << int(log2(WORDSPERLINE_L2)));
+            base_addr <<= 2;
+
+            // Escribir cada palabra a memoria
+            for (unsigned i = 0; i < WORDSPERLINE_L2; ++i) {
+                sc_int<32> word = victim.data[i];
+                MEM->writeWord(base_addr + 4 * i, word);
+            }
+            latency_counter += LATENCY_CYCLES_MEM;
+        }
+
+        // Eliminar línea víctima
+        set.ways.erase(it);
+    }
+
+    // Insertar nueva línea
+    set.ways.push_back(newline);
+    if (PRINT) instCore->printAll(0, 0, 1);
+}
+
 void cacheL2::cacheL2_process() {
     tiempo = sc_time_stamp().to_double() / 1000.0;
 
     if (rst.read()) {
-        latency_counter = LATENCY_CYCLES_L2;
+        latency_counter = 0;
+        current_lru = 0;
         fetch_ready.write(false);
         write_ready.write(false);
         read_ready.write(false);
@@ -84,7 +122,7 @@ void cacheL2::cacheL2_process() {
                     buffer_out.tag = line.tag;
                     buffer_out.lru_counter = line.lru_counter;
 
-                    updateLRU(set, line);
+                    line.lru_counter = current_lru++;
                     hit = true;
                     break;
                 }
@@ -95,6 +133,7 @@ void cacheL2::cacheL2_process() {
                 newline.valid = true;
                 newline.tag = tag;
                 newline.lru_counter = current_lru++;
+                newline.dirty = false;
 
                 for (unsigned i = 0; i < WORDSPERLINE_L2; ++i) {
                     sc_uint<32> currAddr = baseAddrL2 + i * 4;
@@ -109,15 +148,20 @@ void cacheL2::cacheL2_process() {
                 buffer_out.lru_counter = newline.lru_counter;
 
                 writeLine(addr_buf, newline);
-                
-                latency_counter = LATENCY_CYCLES_L2 + LATENCY_CYCLES_MEM;
+
+                cache_misses++;
+                latency_counter += LATENCY_CYCLES_L2;
+                if (!USEWBACK_L2) latency_counter += LATENCY_CYCLES_MEM;
+
                 if (PRINT && client_pending == FETCH) 
                     fprintf(fout1, "Fallo en cache, esperando instruccion a cache (%d clk) + mem (%d clk)", LATENCY_CYCLES_L2, LATENCY_CYCLES_MEM);
                 else if (PRINT && client_pending == DATAMEM_R)
                     fprintf(fout1, "Fallo en cache, esperando dato a cache (%d clk) + mem (%d clk)", LATENCY_CYCLES_L2, LATENCY_CYCLES_MEM);
 
             } else {
-                latency_counter = LATENCY_CYCLES_L2;
+                cache_hits++;
+                cout << std::hex << std::setw(8) << std::setfill('0') << addr_buf << endl;
+                latency_counter += LATENCY_CYCLES_L2;
                 if (PRINT && client_pending == FETCH)
                     fprintf(fout1, "Acierto en cache, esperando instruccion a cache (%d clk)", LATENCY_CYCLES_L2);
                 else if (PRINT && client_pending == DATAMEM_R)
@@ -150,7 +194,7 @@ void cacheL2::cacheL2_process() {
                             line.data[l2_offset + i] = lineL1.data[i];
                     }
                     line.dirty = USEWBACK_L2;
-                    updateLRU(set, line);
+                    line.lru_counter = current_lru++;
                     targetLine = &line;
                     hit = true;
                     break;
@@ -163,6 +207,7 @@ void cacheL2::cacheL2_process() {
                 newline.valid = true;
                 newline.tag = tag;
                 newline.lru_counter = current_lru++;
+                newline.dirty = USEWBACK_L2;
 
                 for (unsigned i = 0; i < WORDSPERLINE_L2; ++i) {
                     sc_uint<32> currAddr = baseAddrL2 + i * 4;
@@ -172,14 +217,16 @@ void cacheL2::cacheL2_process() {
                         newline.data[i] = MEM->isValidAddress(currAddr) ? MEM->readWord(currAddr) : 0x0000dead;
                     }
                 }
-                newline.dirty = USEWBACK_L2;
 
                 writeLine(addr_buf, newline);
                 targetLine = &cache[index].ways.back();
-                latency_counter = LATENCY_CYCLES_L2 + LATENCY_CYCLES_MEM;
-                if (PRINT) fprintf(fout1, "MISS en L2, cargar y escribir (%d + %d ciclos)", LATENCY_CYCLES_L2, LATENCY_CYCLES_MEM);
+                latency_counter += LATENCY_CYCLES_L2 + LATENCY_CYCLES_MEM;
+                cache_misses++;
+                if (PRINT) fprintf(fout1, "MISS en L2, cargar y escribir (%d + %d ciclos)", LATENCY_CYCLES_MEM, LATENCY_CYCLES_L2);
             } else {
-                latency_counter = LATENCY_CYCLES_L2;
+                cache_hits++;
+                cout << std::hex << std::setw(8) << std::setfill('0') << addr_buf << endl;
+                latency_counter += LATENCY_CYCLES_L2;
                 if (PRINT) fprintf(fout1, "HIT en L2, escribir (%d ciclos)", LATENCY_CYCLES_L2);
             }
 
@@ -189,6 +236,7 @@ void cacheL2::cacheL2_process() {
                     sc_uint<32> currAddr = baseAddrL2 + i * 4;
                     if (MEM->isValidAddress(currAddr)) MEM->writeWord(currAddr, targetLine->data[i]);
                 }
+                latency_counter += LATENCY_CYCLES_MEM;
             }
 
             pending_response = true;
@@ -220,50 +268,11 @@ void cacheL2::cacheL2_process() {
 
         pending_response = false;
         client_pending = NONE;
-        latency_counter = LATENCY_CYCLES_L2;
+        latency_counter = 0;
     }
-}
-
-void cacheL2::writeLine(sc_uint<32> addr, const L2CacheLine &newline) {
-    sc_uint<32> index = (addr >> 2) / WORDSPERLINE_L2 % NUMLINES_L2;
-    L2CacheSet &set = cache[index];
-
-    // Reemplazo si es necesario
-    if (set.ways.size() >= ASSOCIATIVITY_L2) {
-        auto it = USEFIFO_L2 ? set.ways.begin()
-                             : std::min_element(set.ways.begin(), set.ways.end(),
-                                                [](const L2CacheLine &a, const L2CacheLine &b) {
-                                                    return a.lru_counter < b.lru_counter;
-                                                });
-
-        L2CacheLine &victim = *it;
-
-        if (USEWBACK_L2 && victim.dirty) {
-            // Calcular dirección base de la línea víctima
-            sc_uint<32> victim_tag = victim.tag;
-            sc_uint<32> base_addr =
-                    (victim_tag << (int(log2(WORDSPERLINE_L2)) + int(log2(NUMLINES_L2)))) |
-                    (index << int(log2(WORDSPERLINE_L2)));
-            base_addr <<= 2;
-
-            // Escribir cada palabra a memoria
-            for (unsigned i = 0; i < WORDSPERLINE_L2; ++i) {
-                sc_int<32> word = victim.data[i];
-                MEM->writeWord(base_addr + 4 * i, word);
-            }
-        }
-
-        // Eliminar línea víctima
-        set.ways.erase(it);
-    }
-
-    // Insertar nueva línea
-    set.ways.push_back(newline);
-    if (PRINT) instCore->printAll(0, 0, 1);
 }
 
 void cacheL2::printCacheL2(int l) {
-    // Cabecera CSV
     fprintf(fout6, "CACHE L2");
     for (int i = 0; i < WORDSPERLINE_L2+2; i++)
         fprintf(fout6, ";");    
@@ -299,8 +308,45 @@ void cacheL2::printCacheL2(int l) {
     }
 }
 
-void cacheL2::updateLRU(L2CacheSet &set, L2CacheLine &accessedLine) {
-    if (!USEFIFO_L2) {
-        accessedLine.lru_counter = current_lru++;
+void cacheL2::end_of_simulation() {
+
+    const char *reemplazo = USEFIFO_L2 ? "FIFO" : "LRU";
+    const char *escritura = USEWBACK_L2 ? "WRITE-BACK" : "WRITE-THROUGH";
+
+    double tasa_acierto = 0.0;
+    if (cache_hits + cache_misses > 0) {
+        tasa_acierto = 100.0 * cache_hits / (cache_hits + cache_misses);
     }
+    char buffer[50];
+    sprintf(buffer, "%.2f", tasa_acierto);
+    for (int i = 0; buffer[i]; i++) {
+        if (buffer[i] == '.') {
+            buffer[i] = ',';
+        }
+    }
+
+    char buffer2[50];
+    double eficiencia = *numInst / (sc_time_stamp().to_double() / 1000.0);
+    sprintf(buffer2, "%.2f", eficiencia);
+    for (int i = 0; buffer2[i]; i++) {
+        if (buffer2[i] == '.') {
+            buffer2[i] = ',';
+        }
+    }
+
+    fprintf(fout7, "L2;%u;%u;%u;%s;%s;;%u;%u;%s\n",
+            ASSOCIATIVITY_L2,
+            NUMLINES_L2,
+            WORDSPERLINE_L2,
+            reemplazo,
+            escritura,
+            cache_hits,
+            cache_misses,
+            buffer);
+
+    fprintf(fout7,
+            "Latencia Cache L2;Latencia MEM;NºInstrucciones;Ciclos totales;"
+            "IPC(%%) (Instrucciones por ciclo)\n");
+    fprintf(fout7, "%u;%u;%u;%.0f;%s\n",
+            LATENCY_CYCLES_L2, LATENCY_CYCLES_MEM, *numInst, (sc_time_stamp().to_double() / 1000.0), buffer2);
 }

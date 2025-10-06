@@ -5,8 +5,7 @@
 
 #include "coreRiscV.h"
 
-FILE *fout1, *fout2, *fout3, *fout4, *fout5, *fout6;
-int sharedFlag = 3;
+FILE *fout1, *fout2, *fout3, *fout4, *fout5, *fout6, *fout7;
 
 void openFiles() {
     fout1 = fopen("..\\Excels\\Output_pipeline.txt", "w");
@@ -37,6 +36,11 @@ void openFiles() {
     fout6 = fopen("..\\Excels\\Output_cache_L2.txt", "w");
     if (!fout6) {
         perror("No se pudo abrir Output_cache_L2.txt");
+        exit(1);
+    }
+    fout7 = fopen("..\\Excels\\Output_stats.txt", "w");
+    if (!fout7) {
+        perror("No se pudo abrir Output_stats.txt");
         exit(1);
     }
 }

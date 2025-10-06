@@ -154,7 +154,7 @@ void decod::decoding() {
             //	puede ayudar a depurar	cout << INST << endl;
             if (INST.I == 0x0000006f) {// Saltar sobre la misma dirección es la forma de terminar el programa
                 jump = jump;           // este breakpoint para que la simulación no continue
-                printf("\n\nTiempo: %.0lf\t Numero de instrucciones: %d\n", tiempo, *numInst);
+                printf("\n\nTiempo: %.0lf\t Numero de instrucciones: %u\n", tiempo, *numInst);
                 printf("Valor de x10 = %d\n", (int) regs[10]);
 
                 if ((int) regs[10] == 0) printf("La ejecucion es correcta\n");

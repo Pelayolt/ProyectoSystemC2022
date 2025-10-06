@@ -37,6 +37,9 @@ public:
 
     void initCacheL2();
     void printCacheL2(int l);
+    virtual void end_of_simulation();
+    
+    unsigned int *numInst;
 
 private:
     struct L2CacheSet {
@@ -49,7 +52,6 @@ private:
     enum ClientType { NONE, FETCH, DATAMEM_R, DATAMEM_W };
     ClientType client_pending = NONE;
 
-    void updateLRU(L2CacheSet & set, L2CacheLine & accessedLine);
     void cacheL2_process();
     void writeLine(sc_uint<32> addr, const L2CacheLine &newline);
 
@@ -68,6 +70,8 @@ private:
     sc_int<32> w_data;
     unsigned w_offset;
 
+    unsigned cache_hits = 0;
+    unsigned cache_misses = 0;
     double tiempo;
 };
 #endif

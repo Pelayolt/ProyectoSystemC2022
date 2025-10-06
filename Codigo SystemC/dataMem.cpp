@@ -2,7 +2,7 @@
 #include "coreRiscV.h"
 #include <iomanip>
 
-extern FILE *fout1, *fout2, *fout4;
+extern FILE *fout1, *fout2, *fout4, *fout7;
 
 void dataMem::initCache() {
     cache.resize(NUMLINES_L1_D);
@@ -33,7 +33,7 @@ void dataMem::updatePendingMask() {
     }
     
     pendingRdMask.write(mask.to_ulong());
-    queueAvailableSpace.write(MAX_SIZE_QUEUE - pendingQueue.size());
+    queueAvailableSpace.write(MAX_QUEUE_SIZE - pendingQueue.size());
 }
 
 bool dataMem::accessCache(sc_int<32> addr, sc_int<32> &word, bool isWrite, sc_int<32> writeData) {
@@ -52,19 +52,25 @@ bool dataMem::accessCache(sc_int<32> addr, sc_int<32> &word, bool isWrite, sc_in
                     line.dirty = true;
                 } else {
                     // WRITE-THROUGH: escribir en L2 en el siguiente ciclo
-                    if (pendingWriteL2) cout << "WARNING: pendingWriteL2 already true when trying to write back dirty line to L2" << endl;
-                    pendingWriteL2 = true;
-                    pending_addr = addr;
-                    pending_line = line; 
+                    dataPendingWrite dpw;
+                    dpw.address = addr;
+                    dpw.line = line;
+                    pendingWrites.push(dpw);
                 }
                 if (PRINT)  instCore->printAll(0,1,0);
 
             } else {
                 word = line.data[offset];
+                cache_hits++;
+                cache_hit_diff = true;
             }
             line.lru_counter = current_lru++;
             return true;
         }
+    }
+    if (!isWrite && cache_hit_diff) {
+        cache_misses++;
+        cache_hit_diff = false;
     }
 
     return false;// MISS
@@ -113,10 +119,10 @@ void dataMem::storeLineToL1(sc_uint<32> addr, const L2CacheLine &lineL2) {
                     (victim_index << int(log2(WORDSPERLINE_L1_D)));
             base_addr <<= 2;
 
-            if (pendingWriteL2) cout << "WARNING: pendingWriteL2 already true when trying to write back dirty line to L2" << endl;
-            pendingWriteL2 = true;
-            pending_addr = base_addr;
-            pending_line = *victim_it;
+            dataPendingWrite dpw;
+            dpw.address = base_addr;
+            dpw.line = *victim_it;
+            pendingWrites.push(dpw);
         }
 
         set.ways.erase(victim_it);
@@ -204,9 +210,10 @@ void dataMem::registro() {
     if (tiempo >= 51762)
         cout << "";
 
-    if (pendingWriteL2 && !waitingL2) {
-        startL2RequestW(pending_addr, pending_line);
-        pendingWriteL2 = false;
+    if (!pendingWrites.empty() && !waitingL2) {
+        dataPendingWrite current = pendingWrites.front();
+        startL2RequestW(current.address, current.line);
+        pendingWrites.pop();
     } 
 
     if (opCode < 15 && !accessCache(address, word, false, 0)) {
@@ -367,4 +374,34 @@ void dataMem::printCacheL1Data(int d) {
             fprintf(fout4, "\n");
         }
     }
+}
+
+void dataMem::end_of_simulation() {
+
+    const char *reemplazo = USEFIFO_L1_D ? "FIFO" : "LRU";
+    const char *escritura = USEWBACK_L1_D ? "WRITE-BACK" : "WRITE-THROUGH";
+
+    double tasa_acierto = 0.0;
+    if (cache_hits + cache_misses > 0) {
+        tasa_acierto = 100.0 * cache_hits / (cache_hits + cache_misses);
+    }
+    char buffer[50];
+    sprintf(buffer, "%.2f", tasa_acierto);
+    for (int i = 0; buffer[i]; i++) {
+        if (buffer[i] == '.') {
+            buffer[i] = ',';
+        }
+    }
+
+    fprintf(fout7, "Datos;%u;%u;%u;%s;%s;%u;%u;%u;%s\n",
+            ASSOCIATIVITY_L1_D,
+            NUMLINES_L1_D,
+            WORDSPERLINE_L1_D,
+            reemplazo,
+            escritura,
+            MAX_QUEUE_SIZE,
+            cache_hits,
+            cache_misses,
+            buffer);
+
 }

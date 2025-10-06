@@ -39,6 +39,7 @@ public:
 
     void registro();
     void printCacheL1Data(int d);
+    virtual void end_of_simulation();
 
     SC_CTOR(dataMem) {
         std::cout << "dataMem: " << name() << std::endl;
@@ -68,14 +69,15 @@ private:
     };
     std::vector<CacheSet> cache;
     std::queue<instruction> pendingQueue;
+    std::queue<dataPendingWrite> pendingWrites;
 
     unsigned current_lru;
     bool waitingL2 = false;
-    bool pendingWriteL2 = false;
     sc_uint<32> addr_buf;
-    sc_int<32> pending_addr;
-    dataCacheLine pending_line;
+    bool cache_hit_diff = true;
 
+    unsigned cache_hits = 0;
+    unsigned cache_misses = 0;
     double tiempo;
 
     void initCache();
