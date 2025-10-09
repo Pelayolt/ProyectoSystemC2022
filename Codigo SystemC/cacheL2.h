@@ -72,6 +72,8 @@ private:
 
     unsigned cache_hits = 0;
     unsigned cache_misses = 0;
+    unsigned mem_writes = 0;
+    unsigned mem_loads = 0;
     double tiempo;
 };
 #endif

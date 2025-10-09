@@ -12,7 +12,7 @@
 #define NUMLINES_L1_D 4
 #define WORDSPERLINE_L1_D 4
 #define USEFIFO_L1_D false
-#define USEWBACK_L1_D false		// false = write-through, true = write-back
+#define USEWBACK_L1_D true		// false = write-through, true = write-back
 #define MAX_QUEUE_SIZE 4  // El tamaño mínimo de la cola debe de ser 2 para poder manejar el pipeline
 
 // Parámetros de configuración de la caché L2

@@ -242,7 +242,7 @@ void fetch::printCacheL1Instr(int i) {
 void fetch::end_of_simulation() {
     fprintf(fout7,
             "Tipo de cache;Asociatividad;Lineas;Palabras por linea;"
-            "Politica reemplazo;Politica_escritura;Tamano maximo cola;Hits;Misses;Tasa acierto(%%)\n");
+            "Politica reemplazo;Politica_escritura;Hits;Misses;Tasa acierto(%%)\n");
 
     const char *reemplazo = USEFIFO_L1_I ? "FIFO" : "LRU";
 
@@ -258,7 +258,7 @@ void fetch::end_of_simulation() {
         }
     }
 
-    fprintf(fout7, "Instrucciones;%u;%u;%u;%s;;;%u;%u;%s\n",
+    fprintf(fout7, "Instrucciones;%u;%u;%u;%s;;%u;%u;%s\n",
             ASSOCIATIVITY_L1_I,
             NUMLINES_L1_I,
             WORDSPERLINE_L1_I,
