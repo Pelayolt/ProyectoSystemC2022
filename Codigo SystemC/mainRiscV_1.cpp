@@ -5,6 +5,22 @@
 
 #include "coreRiscV.h"
 
+/*
+BENCHMARKS ELF FILES:
+
+-- Mejor caso de localidad espacial (para L1-D) --
+..\Codigos_Segger\multiply\Output\Debug\Exe\multiply.elf
+
+-- Prueba de conflictos y asociatividad (para L1-D) --
+..\Codigos_Segger\qsort\Output\Debug\Exe\qsortN.elf
+
+-- Peor caso de localidad espacial (para L1-D) --
+..\Codigos_Segger\spmv\Output\Debug\Exe\spmv.elf
+
+-- Prueba de estrés (para L1-I) --
+..\Codigos_Segger\towers\Output\Debug\Exe\towers.elf
+*/
+
 FILE *fout1, *fout2, *fout3, *fout4, *fout5, *fout6, *fout7;
 
 void openFiles() {
