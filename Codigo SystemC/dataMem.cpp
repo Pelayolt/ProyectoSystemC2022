@@ -395,7 +395,7 @@ void dataMem::end_of_simulation() {
 
     fprintf(fout7, "Datos;%u;%u;%u;%s;%s;%u;%u;%s\n",
             ASSOCIATIVITY_L1_D,
-            NUMLINES_L1_D,
+            NUMLINES_L1_D*ASSOCIATIVITY_L1_D,
             WORDSPERLINE_L1_D,
             reemplazo,
             escritura,

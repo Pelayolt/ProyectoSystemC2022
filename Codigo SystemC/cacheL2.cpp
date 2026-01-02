@@ -5,6 +5,7 @@
 #include <iomanip>
 
 extern FILE *fout1, *fout6, *fout7;
+extern std::string bench_mark_name;
 
 SC_HAS_PROCESS(cacheL2);
 
@@ -318,7 +319,7 @@ void cacheL2::end_of_simulation() {
         tasa_acierto = 100.0 * cache_hits / (cache_hits + cache_misses);
     }
     char buffer[50];
-    sprintf(buffer, "%.2f", tasa_acierto);
+    sprintf(buffer, "%.5f", tasa_acierto);
     for (int i = 0; buffer[i]; i++) {
         if (buffer[i] == '.') {
             buffer[i] = ',';
@@ -336,7 +337,7 @@ void cacheL2::end_of_simulation() {
 
     fprintf(fout7, "L2;%u;%u;%u;%s;%s;%u;%u;%s\n",
             ASSOCIATIVITY_L2,
-            NUMLINES_L2,
+            NUMLINES_L2*ASSOCIATIVITY_L2,
             WORDSPERLINE_L2,
             reemplazo,
             escritura,
@@ -345,8 +346,8 @@ void cacheL2::end_of_simulation() {
             buffer);
 
     fprintf(fout7,
-            "Tamano maximo cola;Latencia Cache L2;Latencia MEM;Lecturas MEM;EScrituras MEM;NºInstrucciones;Ciclos totales;"
-            "IPC(%%) (Instrucciones por ciclo)\n");
-    fprintf(fout7, "%u;%u;%u;%u;%u;%u;%.0f;%s\n",
-            MAX_QUEUE_SIZE, LATENCY_CYCLES_L2, LATENCY_CYCLES_MEM, mem_loads, mem_writes, *numInst, (sc_time_stamp().to_double() / 1000.0), buffer2);
+            "Tamano maximo cola;Latencia Cache L2;Latencia MEM;Lecturas MEM;Escrituras MEM;NºInstrucciones;Ciclos totales;"
+            "IPC(%%) (Instrucciones por ciclo);Benchmark\n");
+    fprintf(fout7, "%u;%u;%u;%u;%u;%u;%.0f;%s;%s\n",
+            MAX_QUEUE_SIZE, LATENCY_CYCLES_L2, LATENCY_CYCLES_MEM, mem_loads, mem_writes, *numInst, (sc_time_stamp().to_double() / 1000.0), buffer2, bench_mark_name.c_str());
 }

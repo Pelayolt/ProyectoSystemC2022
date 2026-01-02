@@ -260,7 +260,7 @@ void fetch::end_of_simulation() {
 
     fprintf(fout7, "Instrucciones;%u;%u;%u;%s;;%u;%u;%s\n",
             ASSOCIATIVITY_L1_I,
-            NUMLINES_L1_I,
+            NUMLINES_L1_I*ASSOCIATIVITY_L1_I,
             WORDSPERLINE_L1_I,
             reemplazo,
             cache_hits,

@@ -3,7 +3,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LocalDebuggerEnvironment>SC_SIGNAL_WRITE_CHECK=DISABLE</LocalDebuggerEnvironment>
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
-    <LocalDebuggerCommandArguments>..\Codigos_Segger\towers\Output\Debug\Exe\towers.elf</LocalDebuggerCommandArguments>
+    <LocalDebuggerCommandArguments>..\Codigos_Segger\qsort\Output\Debug\Exe\qsortN.elf</LocalDebuggerCommandArguments>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LocalDebuggerEnvironment>SC_SIGNAL_WRITE_CHECK=DISABLE
